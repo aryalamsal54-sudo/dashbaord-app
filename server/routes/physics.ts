@@ -1,3 +1,18 @@
+/**
+ * server/routes/physics.ts  — updated version
+ *
+ * Changes from original:
+ *   The /solve endpoint now also accepts a `solution` and `modelUsed` in the
+ *   POST body. When those are provided, it skips calling Gemini and goes
+ *   straight to persisting the solution to the DB.
+ *
+ *   This allows the frontend to:
+ *     1. Call /api/ai/solve (multi-provider) → get text
+ *     2. POST /api/physics/solve { solution: text, modelUsed: ... } → persist
+ *
+ *   The original Gemini fallback is preserved when `solution` is absent.
+ */
+
 import express from 'express';
 import { GoogleGenAI } from "@google/genai";
 import db from '../db';
@@ -5,8 +20,6 @@ import { PHYSICS_TOPICS } from '../data/physicsTopics';
 import { PHYSICS_NUMERICALS } from '../data/physicsNumericals';
 
 const router = express.Router();
-// Initialize AI with API key from environment
-// Note: In AI Studio, the key is injected as GEMINI_API_KEY
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 router.get('/topics', (req, res) => {
@@ -28,8 +41,28 @@ router.get('/solved-ids', (req, res) => {
 });
 
 router.post('/solve', async (req, res) => {
-  const { questionId, question, topic, tab, forceRefresh } = req.body;
-  
+  const { questionId, question, topic, tab, forceRefresh, solution: precomputedSolution, modelUsed: precomputedModel } = req.body;
+
+  // ── If frontend already solved it with a multi-provider model, just persist ──
+  if (precomputedSolution && precomputedModel) {
+    try {
+      db.prepare(`
+        INSERT INTO physics_solutions (question_id, question, solution, model_used, solved, topic, tab, topic_title, num)
+        VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)
+        ON CONFLICT(question_id) DO UPDATE SET
+          solution = excluded.solution,
+          model_used = excluded.model_used,
+          solved = 1,
+          updated_at = CURRENT_TIMESTAMP
+      `).run(questionId, question, precomputedSolution, precomputedModel, topic || 'unknown', tab || 'unknown', 'Physics', '0');
+
+      return res.json({ solution: precomputedSolution, modelUsed: precomputedModel, cached: false });
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  // ── Check DB cache (unless forceRefresh) ─────────────────────────────────
   if (!forceRefresh) {
     const cached = db.prepare('SELECT * FROM physics_solutions WHERE question_id = ?').get(questionId) as any;
     if (cached && cached.solution) {
@@ -37,61 +70,43 @@ router.post('/solve', async (req, res) => {
     }
   }
 
+  // ── Gemini fallback ───────────────────────────────────────────────────────
   try {
     const model = "gemini-2.5-flash";
     let prompt = "";
-    
+
     if (tab === 'derivations') {
-        prompt = `You are a physics expert. Derive the following: ${question}
-        
-        Format the output as HTML with the following structure:
-        <div class="ai-solution">
-          <div class="sol-step">
-            <p class="sol-text">Explanation of the step</p>
-            <div class="math-block">Equation (use LaTeX if needed, or plain text math)</div>
-          </div>
-          ...
-          <div class="sol-result">
-            <span class="sol-result-label">Final Result</span>
-            <span class="sol-result-val">Equation</span>
-          </div>
+      prompt = `You are a physics expert. Derive the following: ${question}
+
+      Format the output as HTML with the following structure:
+      <div class="ai-solution">
+        <div class="sol-step">
+          <p class="sol-text">Explanation of the step</p>
+          <div class="math-block">Equation</div>
         </div>
-        
-        Use <code class="math"> for inline math.
-        Do not use Markdown code blocks. Return raw HTML.`;
+        <div class="sol-result">
+          <span class="sol-result-label">Final Result</span>
+          <span class="sol-result-val">Equation</span>
+        </div>
+      </div>
+      Use <code class="math"> for inline math. Return raw HTML only.`;
     } else {
-        // Numerical prompt
-        prompt = `You are an expert university physics solver. Solve the following problem step-by-step: ${question}
+      prompt = `You are an expert university physics solver. Solve: ${question}
 
-        Format the output as HTML with the following structure:
-        <div class="ai-solution">
-          <div class="sol-step">
-            <p class="sol-text">GIVEN:</p>
-            <div class="math-block">List knowns</div>
-          </div>
-          <div class="sol-step">
-            <p class="sol-text">FORMULA:</p>
-            <div class="math-block">Relevant equations</div>
-          </div>
-          <div class="sol-step">
-            <p class="sol-text">WORKING:</p>
-            <div class="math-block">Step-by-step calculation</div>
-          </div>
-          <div class="sol-result">
-            <span class="sol-result-label">Answer</span>
-            <span class="sol-result-val">Final numerical result with units</span>
-          </div>
+      Format the output as HTML:
+      <div class="ai-solution">
+        <div class="sol-step"><p class="sol-text">GIVEN:</p><div class="math-block">List knowns</div></div>
+        <div class="sol-step"><p class="sol-text">FORMULA:</p><div class="math-block">Equations</div></div>
+        <div class="sol-step"><p class="sol-text">WORKING:</p><div class="math-block">Calculation</div></div>
+        <div class="sol-result">
+          <span class="sol-result-label">Answer</span>
+          <span class="sol-result-val">Result with units</span>
         </div>
-
-        Use <code class="math"> for inline math.
-        Do not use Markdown code blocks. Return raw HTML.`;
+      </div>
+      Use <code class="math"> for inline math. Return raw HTML only.`;
     }
 
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: prompt,
-    });
-    
+    const response = await ai.models.generateContent({ model, contents: prompt });
     const solution = response.text;
     const modelUsed = "Gemini 2.5 Flash";
 
