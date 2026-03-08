@@ -1,15 +1,3 @@
-/**
- * server.ts  — updated version
- *
- * Changes from original:
- *   1. Added `import aiProviderRoutes` + `app.use('/api/ai', aiProviderRoutes)`
- *   2. Physics / Math / Programming solve routes now also accept a `solution`
- *      field in the POST body so the frontend can persist AI-generated content
- *      (coming from the multi-provider client) directly to the DB.
- *
- * Everything else is identical to the original server.ts.
- */
-
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -20,7 +8,7 @@ import authRoutes from "./server/routes/auth";
 import physicsRoutes from "./server/routes/physics";
 import mathRoutes from "./server/routes/math";
 import programmingRoutes from "./server/routes/programming";
-import aiProviderRoutes from "./server/routes/aiProviders";   // ← NEW
+import derivationsRoutes from "./server/routes/derivations";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,7 +26,9 @@ async function startServer() {
   app.use("/api/physics", physicsRoutes);
   app.use("/api/math", mathRoutes);
   app.use("/api/programming", programmingRoutes);
-  app.use("/api/ai", aiProviderRoutes);                       // ← NEW
+  
+  // Derivations App Routes (mounted at root /api to match frontend expectations)
+  app.use("/api", derivationsRoutes);
 
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
