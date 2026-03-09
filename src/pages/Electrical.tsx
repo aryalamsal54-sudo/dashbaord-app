@@ -120,40 +120,26 @@ export default function Electrical() {
     }
   };
 
-  // Key rotation logic
-  const GEMINI_KEYS = [
-    localStorage.getItem('Gemini_API_KEY') || '',
-    // Add more fallback keys here if needed
-  ].filter(Boolean);
-  
-  let currentKeyIndex = 0;
-  const getNextKey = () => {
-    if (GEMINI_KEYS.length === 0) return '';
-    const key = GEMINI_KEYS[currentKeyIndex];
-    currentKeyIndex = (currentKeyIndex + 1) % GEMINI_KEYS.length;
-    return key;
-  };
-
   const generateElectricalContent = async (prompt: string) => {
     // Trigger animation immediately
     setAnimModelId('searching');
     setShowSelectionAnim(true);
 
     try {
-      const apiKey = getNextKey();
+      const apiKeys = aiService.getAllApiKeys();
       const response = await fetch('/api/solve', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-AI-API-Key': apiKey,
         },
         body: JSON.stringify({
           questionId: 'ee-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
           question: prompt,
-          provider: 'Gemini',
-          model: 'gemini-2.0-flash',
+          provider: 'Groq', // Default to Groq
+          model: 'llama-3.3-70b-versatile',
           topic: 'General Chat',
-          forceRefresh: true
+          forceRefresh: true,
+          apiKeys
         })
       });
 

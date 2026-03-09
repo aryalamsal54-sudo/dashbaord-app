@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Types
-export type AIProvider = 'Gemini' | 'OpenAI' | 'Anthropic' | 'Mistral' | 'Meta' | 'Groq' | 'OpenRouter' | 'GitHub' | 'SambaNova' | 'AIMLAPI' | 'Puter' | 'Pollinations';
+export type AIProvider = 'Groq' | 'Puter';
 export type ImageModel = 'Imagen 3' | 'DALL-E 3' | 'Stable Diffusion XL';
 
 export interface AIModelConfig {
@@ -13,51 +13,14 @@ export interface AIModelConfig {
 }
 
 export const AI_MODELS: AIModelConfig[] = [
-  // Gemini
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Gemini', icon: 'Sparkles', color: 'text-teal-400' },
-  { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'Gemini', icon: 'Sparkles', color: 'text-teal-400' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Gemini', icon: 'Sparkles', color: 'text-teal-400' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Gemini', icon: 'Sparkles', color: 'text-teal-400' },
-  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'Gemini', icon: 'Sparkles', color: 'text-teal-400' },
-  { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro Preview', provider: 'Gemini', icon: 'Sparkles', color: 'text-teal-400' },
-  { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite', provider: 'Gemini', icon: 'Sparkles', color: 'text-teal-400' },
-  
   // Groq
   { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', icon: 'Zap', color: 'text-orange-500' },
   { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', provider: 'Groq', icon: 'Zap', color: 'text-orange-500' },
   { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', provider: 'Groq', icon: 'Zap', color: 'text-orange-500' },
   { id: 'gemma2-9b-it', name: 'Gemma 2 9B', provider: 'Groq', icon: 'Zap', color: 'text-orange-500' },
   
-  // OpenRouter
-  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'OpenRouter', icon: 'Workflow', color: 'text-violet-500' },
-  { id: 'anthropic/claude-3.5-haiku', name: 'Claude 3.5 Haiku', provider: 'OpenRouter', icon: 'Workflow', color: 'text-violet-500' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenRouter', icon: 'Workflow', color: 'text-violet-500' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenRouter', icon: 'Workflow', color: 'text-violet-500' },
-  { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', provider: 'OpenRouter', icon: 'Workflow', color: 'text-violet-500' },
-  
-  // GitHub
-  { id: 'gpt-4o', name: 'GPT-4o (GitHub)', provider: 'GitHub', icon: 'Github', color: 'text-slate-400' },
-  { id: 'Phi-4', name: 'Phi-4', provider: 'GitHub', icon: 'Github', color: 'text-slate-400' },
-  
-  // SambaNova
-  { id: 'Meta-Llama-3.1-405B-Instruct', name: 'Llama 3.1 405B', provider: 'SambaNova', icon: 'Flame', color: 'text-red-500' },
-  
-  // AIMLAPI
-  { id: 'mistral-large-latest', name: 'Mistral Large', provider: 'AIMLAPI', icon: 'Bot', color: 'text-green-500' },
-  
-  // Puter (Images)
-  { id: 'gpt-image-1', name: 'GPT Image 1', provider: 'Puter', icon: 'Cloud', color: 'text-blue-500' },
-  { id: 'dall-e-3', name: 'DALL-E 3', provider: 'Puter', icon: 'Cloud', color: 'text-blue-500' },
-  { id: 'flux-1.1-pro', name: 'Flux 1.1 Pro', provider: 'Puter', icon: 'Cloud', color: 'text-blue-500' },
-  
-  // Pollinations (Images)
-  { id: 'flux', name: 'Flux', provider: 'Pollinations', icon: 'Palette', color: 'text-pink-500' },
-  { id: 'turbo', name: 'Turbo', provider: 'Pollinations', icon: 'Palette', color: 'text-pink-500' },
-  
-  // Legacy/Fallbacks
-  { id: 'claude-3-5-sonnet', name: 'Anthropic Claude', provider: 'Anthropic', icon: 'Diamond', color: 'text-purple-400' },
-  { id: 'mistral-large', name: 'Mistral', provider: 'Mistral', icon: 'Waves', color: 'text-orange-400' },
-  { id: 'llama-3', name: 'Meta LLaMA', provider: 'Meta', icon: 'Flame', color: 'text-red-400' },
+  // Puter
+  { id: 'puter-model', name: 'Puter General', provider: 'Puter', icon: 'Cloud', color: 'text-blue-500' },
 ];
 
 export const IMAGE_MODELS: ImageModel[] = ['Imagen 3', 'DALL-E 3', 'Stable Diffusion XL'];
@@ -78,7 +41,7 @@ class AIService {
 
   public getAllApiKeys(): Record<string, string> {
     const keys: Record<string, string> = {};
-    const providers = ['OpenAI', 'Anthropic', 'Groq', 'Mistral', 'Meta'];
+    const providers = ['Groq'];
     providers.forEach(p => {
       const k = localStorage.getItem(`${p}_API_KEY`);
       if (k) keys[p] = k;
@@ -118,7 +81,8 @@ class AIService {
           provider: modelConfig.provider,
           model: modelConfig.id,
           topic: 'General Chat', // Context
-          forceRefresh: true
+          forceRefresh: true,
+          apiKeys: this.getAllApiKeys()
         })
       });
 
