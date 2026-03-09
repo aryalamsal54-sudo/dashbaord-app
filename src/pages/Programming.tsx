@@ -16,6 +16,7 @@ import {
   Laptop
 } from 'lucide-react';
 import { Topic, Question, Solution } from '../types';
+import AISelectionAnimation from '../components/ai/AISelectionAnimation';
 
 export default function Programming() {
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -25,6 +26,8 @@ export default function Programming() {
   const [solution, setSolution] = useState<Solution | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showSelectionAnim, setShowSelectionAnim] = useState(false);
+  const [animModelId, setAnimModelId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/programming/topics')
@@ -56,7 +59,19 @@ export default function Programming() {
         })
       });
       const data = await res.json();
-      setSolution(data);
+      
+      // Trigger animation if it's a new generation (not cached)
+      if (data.modelUsed && !data.cached) {
+        setAnimModelId(data.modelUsed);
+        setShowSelectionAnim(true);
+        // Wait for animation to show for a bit
+        setTimeout(() => {
+          setShowSelectionAnim(false);
+          setSolution(data);
+        }, 2500);
+      } else {
+        setSolution(data);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -307,6 +322,11 @@ export default function Programming() {
           </motion.div>
         )}
       </AnimatePresence>
+      <AISelectionAnimation 
+        modelId={animModelId} 
+        isVisible={showSelectionAnim} 
+        onComplete={() => setAnimModelId(null)} 
+      />
     </div>
   );
 }

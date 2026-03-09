@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Menu, X, Sparkles } from 'lucide-react';
 import { Question } from '../types';
+import AISelectionAnimation from '../components/ai/AISelectionAnimation';
 
 interface MathTopic {
   id: string;
@@ -21,6 +22,8 @@ export default function Math() {
   const [solution, setSolution] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
+  const [showSelectionAnim, setShowSelectionAnim] = useState(false);
+  const [animModelId, setAnimModelId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/math/topics')
@@ -55,8 +58,19 @@ export default function Math() {
         })
       });
       const data = await res.json();
-      setSolution(data.solution);
-      setModelUsed(data.modelUsed);
+      
+      if (data.modelUsed && !data.cached) {
+        setAnimModelId(data.modelUsed);
+        setShowSelectionAnim(true);
+        setTimeout(() => {
+          setShowSelectionAnim(false);
+          setSolution(data.solution);
+          setModelUsed(data.modelUsed);
+        }, 2500);
+      } else {
+        setSolution(data.solution);
+        setModelUsed(data.modelUsed);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -282,6 +296,12 @@ export default function Math() {
           </div>
         )}
       </AnimatePresence>
+
+      <AISelectionAnimation 
+        modelId={animModelId} 
+        isVisible={showSelectionAnim} 
+        onComplete={() => setAnimModelId(null)} 
+      />
     </div>
   );
 }

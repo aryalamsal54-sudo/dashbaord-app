@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Menu, X, Sparkles, BookOpen, Sigma, Calculator, Cpu, FileText, Globe, AlertTriangle, Send } from 'lucide-react';
 import { aiService } from '../services/aiService';
+import AISelectionAnimation from '../components/ai/AISelectionAnimation';
 
 interface ElectricalTopic {
   id: string;
@@ -32,6 +33,8 @@ export default function Electrical() {
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [loadingSection, setLoadingSection] = useState<string | null>(null);
   const [loadingQA, setLoadingQA] = useState(false);
+  const [showSelectionAnim, setShowSelectionAnim] = useState(false);
+  const [animModelId, setAnimModelId] = useState<string | null>(null);
   
   // Tabs
   const [activeTab, setActiveTab] = useState<'notes' | 'questions'>('notes');
@@ -91,6 +94,14 @@ export default function Electrical() {
 
     if (!response.ok) throw new Error('Failed to generate content');
     const data = await response.json();
+    
+    if (data.modelUsed && !data.cached) {
+      setAnimModelId(data.modelUsed);
+      setShowSelectionAnim(true);
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      setShowSelectionAnim(false);
+    }
+    
     return data.solution;
   };
 
@@ -463,6 +474,11 @@ export default function Electrical() {
           )}
         </div>
       </main>
+      <AISelectionAnimation 
+        modelId={animModelId} 
+        isVisible={showSelectionAnim} 
+        onComplete={() => setAnimModelId(null)} 
+      />
     </div>
   );
 }

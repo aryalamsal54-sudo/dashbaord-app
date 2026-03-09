@@ -22,7 +22,7 @@ interface Provider {
 }
 
 // --- Data ---
-const PROVIDERS: Provider[] = [
+export const PROVIDERS: Provider[] = [
   {
     id:'groq', name:'Groq', icon:'⚡', desc:'Ultra-fast inference',
     color:'#f97316', clo:'rgba(249,115,22,0.18)',
