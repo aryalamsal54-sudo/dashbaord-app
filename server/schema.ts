@@ -113,5 +113,17 @@ export function initSchema() {
     );
   `);
 
+  // Rate Limits
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      provider TEXT NOT NULL,
+      model TEXT NOT NULL,
+      date TEXT NOT NULL,
+      last_failed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(provider, model, date)
+    );
+  `);
+
   console.log('Database schema initialized');
 }

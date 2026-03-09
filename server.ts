@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import db from "./server/db";
 import { initSchema } from "./server/schema";
+import { startBackgroundSolver } from "./server/utils/backgroundSolver";
 import authRoutes from "./server/routes/auth";
 import physicsRoutes from "./server/routes/physics";
 import mathRoutes from "./server/routes/math";
@@ -21,6 +22,9 @@ async function startServer() {
 
   // Initialize DB Schema
   initSchema();
+  
+  // Start background solver
+  startBackgroundSolver().catch(console.error);
 
   // API Routes
   app.use("/api/auth", authRoutes);

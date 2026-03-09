@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import db from "../db";
 
 // Initialize Gemini for complexity analysis (always available)
 const getGemini = () => {
@@ -6,6 +7,24 @@ const getGemini = () => {
   if (!key) throw new Error("GEMINI_API_KEY is missing");
   return new GoogleGenAI({ apiKey: key });
 };
+
+// Rate limit tracking
+export function markModelAsRateLimited(provider: string, model: string) {
+  const today = new Date().toISOString().split('T')[0];
+  db.prepare(`
+    INSERT OR IGNORE INTO rate_limits (provider, model, date)
+    VALUES (?, ?, ?)
+  `).run(provider, model, today);
+}
+
+export function isModelRateLimited(provider: string, model: string): boolean {
+  const today = new Date().toISOString().split('T')[0];
+  const limit = db.prepare(`
+    SELECT 1 FROM rate_limits 
+    WHERE provider = ? AND model = ? AND date = ?
+  `).get(provider, model, today);
+  return !!limit;
+}
 
 interface APIKeys {
   OpenAI?: string;
@@ -71,18 +90,21 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
     let selectedModel = 'gemini-2.5-flash';
     let selectedProvider = 'Gemini';
 
+    // Helper to check if a model is available (not rate limited)
+    const isAvailable = (provider: string, model: string) => !isModelRateLimited(provider, model);
+
     if (complexity >= 8) {
       // Tier 1: Reasoning Heavyweights
-      if (activeAPIs.includes('Anthropic')) {
+      if (activeAPIs.includes('Anthropic') && isAvailable('Anthropic', 'claude-3-5-sonnet-20241022')) {
         selectedProvider = 'Anthropic';
         selectedModel = 'claude-3-5-sonnet-20241022';
-      } else if (activeAPIs.includes('OpenAI')) {
+      } else if (activeAPIs.includes('OpenAI') && isAvailable('OpenAI', 'gpt-4o')) {
         selectedProvider = 'OpenAI';
         selectedModel = 'gpt-4o';
-      } else if (activeAPIs.includes('DeepSeek')) {
+      } else if (activeAPIs.includes('DeepSeek') && isAvailable('DeepSeek', 'deepseek-chat')) {
         selectedProvider = 'DeepSeek';
-        selectedModel = 'deepseek-chat'; // DeepSeek V3 is excellent for reasoning
-      } else if (activeAPIs.includes('OpenRouter')) {
+        selectedModel = 'deepseek-chat';
+      } else if (activeAPIs.includes('OpenRouter') && isAvailable('OpenRouter', 'anthropic/claude-3.5-sonnet')) {
         selectedProvider = 'OpenRouter';
         selectedModel = 'anthropic/claude-3.5-sonnet';
       } else {
@@ -91,13 +113,13 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
       }
     } else if (complexity >= 5) {
       // Tier 2: Balanced Performance
-      if (category === 'coding' && activeAPIs.includes('DeepSeek')) {
+      if (category === 'coding' && activeAPIs.includes('DeepSeek') && isAvailable('DeepSeek', 'deepseek-chat')) {
         selectedProvider = 'DeepSeek';
         selectedModel = 'deepseek-chat';
-      } else if (activeAPIs.includes('Groq')) {
+      } else if (activeAPIs.includes('Groq') && isAvailable('Groq', 'llama-3.3-70b-versatile')) {
         selectedProvider = 'Groq';
         selectedModel = 'llama-3.3-70b-versatile';
-      } else if (activeAPIs.includes('SambaNova')) {
+      } else if (activeAPIs.includes('SambaNova') && isAvailable('SambaNova', 'Meta-Llama-3.1-70B-Instruct')) {
         selectedProvider = 'SambaNova';
         selectedModel = 'Meta-Llama-3.1-70B-Instruct';
       } else {
@@ -106,7 +128,7 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
       }
     } else {
       // Tier 3: Speed Optimized
-      if (activeAPIs.includes('Groq')) {
+      if (activeAPIs.includes('Groq') && isAvailable('Groq', 'llama-3.1-8b-instant')) {
         selectedProvider = 'Groq';
         selectedModel = 'llama-3.1-8b-instant';
       } else {
@@ -135,118 +157,130 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
 }
 
 export async function generateWithProvider(provider: string, model: string, prompt: string, keys: APIKeys) {
-  if (provider === 'Gemini') {
+  try {
+    if (provider === 'Gemini') {
+      const response = await getGemini().models.generateContent({
+        model: model,
+        contents: prompt,
+      });
+      return response.text;
+    }
+    
+    if (provider === 'Groq') {
+      const apiKey = keys.Groq || process.env.GROQ_API_KEY;
+      if (!apiKey) throw new Error("Groq API key missing");
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw data.error || new Error('Groq API error');
+      return data.choices[0].message.content;
+    }
+
+    if (provider === 'OpenAI') {
+      const apiKey = keys.OpenAI || process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error("OpenAI API key missing");
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw data.error || new Error('OpenAI API error');
+      return data.choices[0].message.content;
+    }
+
+    if (provider === 'Anthropic') {
+      const apiKey = keys.Anthropic || process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) throw new Error("Anthropic API key missing");
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 4096,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw data.error || new Error('Anthropic API error');
+      return data.content[0].text;
+    }
+
+    // Generic OpenAI-compatible fetcher for OpenRouter, etc.
+    let apiUrl = '';
+    let apiKey = '';
+    
+    switch (provider) {
+      case 'OpenRouter':
+        apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+        apiKey = process.env.OPENROUTER_API_KEY || '';
+        break;
+      case 'GitHub Models':
+      case 'GitHub':
+         apiUrl = 'https://models.inference.ai.azure.com/chat/completions';
+         apiKey = process.env.GITHUB_MODELS_API_KEY || '';
+         break;
+      case 'AIMLAPI':
+         apiUrl = 'https://api.aimlapi.com/chat/completions';
+         apiKey = process.env.AIMLAPI_API_KEY || '';
+         break;
+      case 'SambaNova':
+         apiUrl = 'https://api.sambanova.ai/v1/chat/completions';
+         apiKey = process.env.SAMBANOVA_API_KEY || '';
+         break;
+      case 'DeepSeek':
+         apiUrl = 'https://api.deepseek.com/chat/completions';
+         apiKey = process.env.DEEPSEEK_API_KEY || '';
+         break;
+    }
+
+    if (apiUrl && apiKey) {
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw data.error || new Error(`${provider} API error`);
+      return data.choices[0].message.content;
+    }
+
+    // Fallback
     const response = await getGemini().models.generateContent({
-      model: model,
+      model: 'gemini-2.5-flash',
       contents: prompt,
     });
     return response.text;
+    
+  } catch (error: any) {
+    if (error.status === 429 || error.message?.includes('RESOURCE_EXHAUSTED') || error.message?.includes('quota') || error.message?.includes('rate limit')) {
+      markModelAsRateLimited(provider, model);
+    }
+    throw error;
   }
-  
-  if (provider === 'Groq') {
-    const apiKey = keys.Groq || process.env.GROQ_API_KEY;
-    if (!apiKey) throw new Error("Groq API key missing");
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    return data.choices[0].message.content;
-  }
-
-  if (provider === 'OpenAI') {
-    const apiKey = keys.OpenAI || process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("OpenAI API key missing");
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    return data.choices[0].message.content;
-  }
-
-  if (provider === 'Anthropic') {
-    const apiKey = keys.Anthropic || process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error("Anthropic API key missing");
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: model,
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    return data.content[0].text;
-  }
-
-  // Generic OpenAI-compatible fetcher for OpenRouter, etc.
-  let apiUrl = '';
-  let apiKey = '';
-  
-  switch (provider) {
-    case 'OpenRouter':
-      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-      apiKey = process.env.OPENROUTER_API_KEY || '';
-      break;
-    case 'GitHub Models':
-    case 'GitHub':
-       apiUrl = 'https://models.inference.ai.azure.com/chat/completions';
-       apiKey = process.env.GITHUB_MODELS_API_KEY || '';
-       break;
-    case 'AIMLAPI':
-       apiUrl = 'https://api.aimlapi.com/chat/completions';
-       apiKey = process.env.AIMLAPI_API_KEY || '';
-       break;
-    case 'SambaNova':
-       apiUrl = 'https://api.sambanova.ai/v1/chat/completions';
-       apiKey = process.env.SAMBANOVA_API_KEY || '';
-       break;
-    case 'DeepSeek':
-       apiUrl = 'https://api.deepseek.com/chat/completions';
-       apiKey = process.env.DEEPSEEK_API_KEY || '';
-       break;
-  }
-
-  if (apiUrl && apiKey) {
-    const res = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    return data.choices[0].message.content;
-  }
-
-  // Fallback
-  const response = await getGemini().models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-  });
-  return response.text;
 }
