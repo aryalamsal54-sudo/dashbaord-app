@@ -42,7 +42,11 @@ export default function Programming() {
   const handleSolve = async (forceRefresh = false) => {
     if (!selectedQuestion || !selectedTopic) return;
     
+    // Trigger animation immediately
+    setAnimModelId('searching');
+    setShowSelectionAnim(true);
     setLoading(true);
+
     try {
       const { aiService } = await import('../services/aiService');
       const apiKeys = aiService.getAllApiKeys();
@@ -64,17 +68,18 @@ export default function Programming() {
       // Trigger animation if it's a new generation (not cached)
       if (data.modelUsed && !data.cached) {
         setAnimModelId(data.modelUsed);
-        setShowSelectionAnim(true);
-        // Wait for animation to show for a bit
+        // Keep animation visible for a bit to show the selected model
         setTimeout(() => {
           setShowSelectionAnim(false);
           setSolution(data);
-        }, 2500);
+        }, 2000);
       } else {
+        setShowSelectionAnim(false);
         setSolution(data);
       }
     } catch (err) {
       console.error(err);
+      setShowSelectionAnim(false);
     } finally {
       setLoading(false);
     }

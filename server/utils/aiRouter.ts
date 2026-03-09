@@ -45,31 +45,46 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
     // We also always have Gemini available.
     
     const activeAPIs = ['Gemini'];
-    if (keys.OpenAI && keys.OpenAI.length > 10) activeAPIs.push('OpenAI');
-    if (keys.Anthropic && keys.Anthropic.length > 10) activeAPIs.push('Anthropic');
-    if (keys.Groq && keys.Groq.length > 10) activeAPIs.push('Groq');
+    if ((keys.OpenAI && keys.OpenAI.length > 10) || process.env.OPENAI_API_KEY) activeAPIs.push('OpenAI');
+    if ((keys.Anthropic && keys.Anthropic.length > 10) || process.env.ANTHROPIC_API_KEY) activeAPIs.push('Anthropic');
+    if ((keys.Groq && keys.Groq.length > 10) || process.env.GROQ_API_KEY) activeAPIs.push('Groq');
+    if (process.env.OPENROUTER_API_KEY) activeAPIs.push('OpenRouter');
+    if (process.env.SAMBANOVA_API_KEY) activeAPIs.push('SambaNova');
+    if (process.env.DEEPSEEK_API_KEY) activeAPIs.push('DeepSeek');
     
     // 3. Choose the best model
     let selectedModel = 'gemini-2.5-flash';
     let selectedProvider = 'Gemini';
 
     if (complexity >= 8) {
-      // High complexity: Prefer OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet), or Gemini Pro
+      // High complexity: Prefer OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet), or DeepSeek
       if (activeAPIs.includes('Anthropic')) {
         selectedProvider = 'Anthropic';
         selectedModel = 'claude-3-5-sonnet-20241022';
       } else if (activeAPIs.includes('OpenAI')) {
         selectedProvider = 'OpenAI';
         selectedModel = 'gpt-4o';
+      } else if (activeAPIs.includes('DeepSeek')) {
+        selectedProvider = 'DeepSeek';
+        selectedModel = 'deepseek-chat';
+      } else if (activeAPIs.includes('OpenRouter')) {
+        selectedProvider = 'OpenRouter';
+        selectedModel = 'anthropic/claude-3.5-sonnet';
       } else {
         selectedProvider = 'Gemini';
         selectedModel = 'gemini-3.1-pro-preview';
       }
     } else if (complexity >= 5) {
-      // Medium complexity: Prefer Groq (fast Llama 3.3 70B) or Gemini Flash
+      // Medium complexity: Prefer Groq (fast Llama 3.3 70B), SambaNova, or Gemini Flash
       if (activeAPIs.includes('Groq')) {
         selectedProvider = 'Groq';
         selectedModel = 'llama-3.3-70b-versatile';
+      } else if (activeAPIs.includes('SambaNova')) {
+        selectedProvider = 'SambaNova';
+        selectedModel = 'Meta-Llama-3.1-70B-Instruct';
+      } else if (activeAPIs.includes('DeepSeek')) {
+        selectedProvider = 'DeepSeek';
+        selectedModel = 'deepseek-chat';
       } else {
         selectedProvider = 'Gemini';
         selectedModel = 'gemini-2.5-flash';
@@ -188,6 +203,10 @@ export async function generateWithProvider(provider: string, model: string, prom
     case 'SambaNova':
        apiUrl = 'https://api.sambanova.ai/v1/chat/completions';
        apiKey = process.env.SAMBANOVA_API_KEY || '';
+       break;
+    case 'DeepSeek':
+       apiUrl = 'https://api.deepseek.com/chat/completions';
+       apiKey = process.env.DEEPSEEK_API_KEY || '';
        break;
   }
 

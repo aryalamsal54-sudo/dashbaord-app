@@ -10,26 +10,32 @@ interface AISelectionAnimationProps {
 }
 
 export default function AISelectionAnimation({ modelId, isVisible, onComplete }: AISelectionAnimationProps) {
-  if (!modelId) return null;
-
   // Find model and provider details
   let selectedModel = null;
   let selectedProvider = null;
+  const isSearching = !modelId || modelId === 'searching';
 
-  for (const provider of PROVIDERS) {
-    const model = provider.models.find(m => m.id === modelId);
-    if (model) {
-      selectedModel = model;
-      selectedProvider = provider;
-      break;
+  if (!isSearching) {
+    for (const provider of PROVIDERS) {
+      const model = provider.models.find(m => m.id === modelId);
+      if (model) {
+        selectedModel = model;
+        selectedProvider = provider;
+        break;
+      }
     }
+
+    // Fallback if model not found in our list
+    if (!selectedModel || !selectedProvider) {
+      selectedModel = { name: modelId as string, desc: 'Advanced AI Model', cat: 'AI' };
+      selectedProvider = { name: 'AI Provider', icon: '🤖', color: '#10b981' };
+    }
+  } else {
+    selectedModel = { name: 'Analyzing...', desc: 'Determining problem complexity', cat: 'AI' };
+    selectedProvider = { name: 'Smart Router', icon: '🧠', color: '#6366f1' };
   }
 
-  // Fallback if model not found in our list
-  if (!selectedModel || !selectedProvider) {
-    selectedModel = { name: modelId, desc: 'Advanced AI Model', cat: 'AI' };
-    selectedProvider = { name: 'AI Provider', icon: '🤖', color: '#10b981' };
-  }
+  const themeColor = selectedProvider.color;
 
   return (
     <AnimatePresence onExitComplete={onComplete}>
@@ -57,7 +63,7 @@ export default function AISelectionAnimation({ modelId, isVisible, onComplete }:
                   ease: "easeOut" 
                 }}
                 className="absolute w-64 h-64 rounded-full border-2"
-                style={{ borderColor: selectedProvider.color }}
+                style={{ borderColor: themeColor }}
               />
             ))}
 
@@ -69,7 +75,7 @@ export default function AISelectionAnimation({ modelId, isVisible, onComplete }:
                   className="absolute w-1 rounded-full"
                   style={{ 
                     height: '20px',
-                    backgroundColor: selectedProvider.color,
+                    backgroundColor: themeColor,
                     transform: `rotate(${i * 6}deg) translateY(-140px)`,
                     opacity: 0.6
                   }}
@@ -88,13 +94,25 @@ export default function AISelectionAnimation({ modelId, isVisible, onComplete }:
 
             {/* Central Content */}
             <motion.div
+              key={isSearching ? 'searching' : modelId}
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               exit={{ scale: 0, opacity: 0 }}
               className="relative w-48 h-48 rounded-full bg-[var(--bg-primary)] border-4 flex flex-col items-center justify-center text-center p-4 shadow-2xl z-10"
-              style={{ borderColor: selectedProvider.color, boxShadow: `0 0 40px ${selectedProvider.color}44` }}
+              style={{ borderColor: themeColor, boxShadow: `0 0 40px ${themeColor}44` }}
             >
-              <div className="text-4xl mb-2">{selectedProvider.icon}</div>
+              <div className="text-4xl mb-2">
+                {isSearching ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  >
+                    {selectedProvider.icon}
+                  </motion.div>
+                ) : (
+                  selectedProvider.icon
+                )}
+              </div>
               <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1">
                 {selectedProvider.name}
               </div>
@@ -114,7 +132,7 @@ export default function AISelectionAnimation({ modelId, isVisible, onComplete }:
                 transition={{ duration: 2, repeat: Infinity }}
                 className="absolute -top-2 -right-2"
               >
-                <Sparkles className="w-6 h-6" style={{ color: selectedProvider.color }} />
+                <Sparkles className="w-6 h-6" style={{ color: themeColor }} />
               </motion.div>
             </motion.div>
           </div>

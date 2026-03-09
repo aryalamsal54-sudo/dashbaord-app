@@ -76,6 +76,10 @@ export default function Electrical() {
   };
 
   const generateElectricalContent = async (prompt: string) => {
+    // Trigger animation immediately
+    setAnimModelId('searching');
+    setShowSelectionAnim(true);
+
     const apiKey = getNextKey();
     const response = await fetch('/api/solve', {
       method: 'POST',
@@ -93,13 +97,18 @@ export default function Electrical() {
       })
     });
 
-    if (!response.ok) throw new Error('Failed to generate content');
+    if (!response.ok) {
+      setShowSelectionAnim(false);
+      throw new Error('Failed to generate content');
+    }
     const data = await response.json();
     
     if (data.modelUsed && !data.cached) {
       setAnimModelId(data.modelUsed);
-      setShowSelectionAnim(true);
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      // Keep animation visible for a bit to show the selected model
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setShowSelectionAnim(false);
+    } else {
       setShowSelectionAnim(false);
     }
     

@@ -48,7 +48,12 @@ export default function PhysicsNumericals() {
 
   const solveWithAI = async (forceRefresh = false) => {
     if (!selectedQuestion) return;
+    
+    // Trigger animation immediately
+    setAnimModelId('searching');
+    setShowSelectionAnim(true);
     setLoading(true);
+
     try {
       const { aiService } = await import('../services/aiService');
       const apiKeys = aiService.getAllApiKeys();
@@ -69,18 +74,20 @@ export default function PhysicsNumericals() {
       
       if (data.modelUsed && !data.cached) {
         setAnimModelId(data.modelUsed);
-        setShowSelectionAnim(true);
+        // Keep animation visible for a bit to show the selected model
         setTimeout(() => {
           setShowSelectionAnim(false);
           setSolution(data.solution);
           setModelUsed(data.modelUsed);
-        }, 2500);
+        }, 2000);
       } else {
+        setShowSelectionAnim(false);
         setSolution(data.solution);
         setModelUsed(data.modelUsed);
       }
     } catch (e) {
       console.error(e);
+      setShowSelectionAnim(false);
     } finally {
       setLoading(false);
     }
