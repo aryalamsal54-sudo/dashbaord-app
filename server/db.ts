@@ -1,10 +1,10 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+import pkg from 'pg';
+const { Pool } = pkg;
 
-const dbPath = path.resolve('ioe_hub.db');
-const db = new Database(dbPath);
+const connectionString = 'postgresql://derivation_user:p1mu2oOuQTHNQPZYsUHLcsOH4saXVh5b@dpg-d6lr38k50q8c73a998pg-a/derivation';
 
-// Enable WAL mode for better concurrency
-db.pragma('journal_mode = WAL');
+const pool = new Pool({
+  connectionString,
+});
 
-export default db;
+export default pool;

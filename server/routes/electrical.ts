@@ -1,18 +1,18 @@
 import express from 'express';
-import db from '../db';
+import pool from '../db';
 
 const router = express.Router();
 
 // Get all topics
-router.get('/topics', (req, res) => {
+router.get('/topics', async (req, res) => {
   try {
-    const rows = db.prepare('SELECT * FROM electrical_topics ORDER BY updated_at DESC').all() as any[];
+    const { rows } = await pool.query('SELECT * FROM electrical_topics ORDER BY updated_at DESC');
     const topics = rows.map(row => ({
       id: row.id,
       title: row.title,
       overview: row.overview || '',
-      sections: JSON.parse(row.sections || '{}'),
-      customQA: JSON.parse(row.custom_qa || '[]')
+      sections: typeof row.sections === 'string' ? JSON.parse(row.sections) : row.sections,
+      customQA: typeof row.custom_qa === 'string' ? JSON.parse(row.custom_qa) : row.custom_qa
     }));
     res.json(topics);
   } catch (error: any) {
@@ -22,20 +22,20 @@ router.get('/topics', (req, res) => {
 });
 
 // Save or update a topic
-router.post('/topics', (req, res) => {
+router.post('/topics', async (req, res) => {
   const { id, title, overview, sections, customQA } = req.body;
   
   try {
-    db.prepare(`
+    await pool.query(`
       INSERT INTO electrical_topics (id, title, overview, sections, custom_qa, updated_at)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
       ON CONFLICT(id) DO UPDATE SET
-        title = excluded.title,
-        overview = excluded.overview,
-        sections = excluded.sections,
-        custom_qa = excluded.custom_qa,
+        title = EXCLUDED.title,
+        overview = EXCLUDED.overview,
+        sections = EXCLUDED.sections,
+        custom_qa = EXCLUDED.custom_qa,
         updated_at = CURRENT_TIMESTAMP
-    `).run(id, title, overview, JSON.stringify(sections), JSON.stringify(customQA));
+    `, [id, title, overview, JSON.stringify(sections), JSON.stringify(customQA)]);
     
     res.json({ success: true });
   } catch (error: any) {
@@ -45,9 +45,9 @@ router.post('/topics', (req, res) => {
 });
 
 // Delete a topic
-router.delete('/topics/:id', (req, res) => {
+router.delete('/topics/:id', async (req, res) => {
   try {
-    db.prepare('DELETE FROM electrical_topics WHERE id = ?').run(req.params.id);
+    await pool.query('DELETE FROM electrical_topics WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (error: any) {
     console.error("Failed to delete electrical topic:", error);
