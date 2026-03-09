@@ -205,8 +205,20 @@ export default function AIModelSelector() {
   const [activeProviderId, setActiveProviderId] = useState(PROVIDERS[0].id);
   const [search, setSearch] = useState('');
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
+  const [providerStatus, setProviderStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch('/api/ai/status');
+        const data = await res.json();
+        setProviderStatus(data);
+      } catch (e) {
+        console.error('Failed to fetch AI status', e);
+      }
+    };
+    fetchStatus();
+
     const stored = localStorage.getItem('selectedAIModel');
     if (stored) {
       setConfirmedId(stored);
@@ -302,25 +314,31 @@ export default function AIModelSelector() {
                   <p className="text-xs text-[var(--text-tertiary)] mt-1">Select your intelligence</p>
                 </div>
                 <div className="flex-1 overflow-y-auto p-3 space-y-1 model-scroll flex flex-row md:flex-col">
-                  {PROVIDERS.map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => { setActiveProviderId(p.id); setSearch(''); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                        activeProviderId === p.id 
-                          ? 'bg-[var(--bg-primary)] shadow-sm border border-[var(--border-primary)]' 
-                          : 'hover:bg-[var(--bg-tertiary)] border border-transparent text-[var(--text-secondary)]'
-                      }`}
-                    >
-                      <span className="text-xl">{p.icon}</span>
-                      <div className="text-left flex-1 hidden md:block">
-                        <div className={`text-sm font-semibold ${activeProviderId === p.id ? 'text-[var(--text-primary)]' : ''}`}>
-                          {p.name}
+                  {PROVIDERS.map(p => {
+                    const isProviderActive = providerStatus[p.id];
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => { setActiveProviderId(p.id); setSearch(''); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                          activeProviderId === p.id 
+                            ? 'bg-[var(--bg-primary)] shadow-sm border border-[var(--border-primary)]' 
+                            : 'hover:bg-[var(--bg-tertiary)] border border-transparent text-[var(--text-secondary)]'
+                        }`}
+                      >
+                        <div className="relative">
+                          <span className="text-xl">{p.icon}</span>
+                          <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-[var(--bg-secondary)] ${isProviderActive ? 'bg-emerald-500' : 'bg-red-500'}`} />
                         </div>
-                        <div className="text-[10px] text-[var(--text-tertiary)] truncate">{p.models.length} models</div>
-                      </div>
-                    </button>
-                  ))}
+                        <div className="text-left flex-1 hidden md:block">
+                          <div className={`text-sm font-semibold ${activeProviderId === p.id ? 'text-[var(--text-primary)]' : ''}`}>
+                            {p.name}
+                          </div>
+                          <div className="text-[10px] text-[var(--text-tertiary)] truncate">{p.models.length} models</div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -349,6 +367,7 @@ export default function AIModelSelector() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredModels.map(m => {
                       const isSelected = confirmedId === m.id;
+                      const isProviderActive = providerStatus[activeProvider.id];
                       return (
                         <div
                           key={m.id}
@@ -357,13 +376,24 @@ export default function AIModelSelector() {
                             isSelected 
                               ? 'bg-[var(--bg-secondary)] shadow-lg' 
                               : 'bg-[var(--bg-primary)]/50 hover:bg-[var(--bg-secondary)] hover:shadow-md border-[var(--border-primary)]'
-                          }`}
-                          style={isSelected ? { borderColor: activeProvider.color, boxShadow: `0 4px 20px ${activeProvider.clo}` } : {}}
+                          } ${!isProviderActive ? 'border-red-500/30' : ''}`}
+                          style={isSelected ? { 
+                            borderColor: isProviderActive ? activeProvider.color : '#ef4444', 
+                            boxShadow: `0 4px 20px ${isProviderActive ? activeProvider.clo : 'rgba(239,68,68,0.15)'}` 
+                          } : {}}
                         >
                           <div className="flex items-start justify-between mb-3">
-                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-primary)]">
-                              {m.cat}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-primary)]">
+                                {m.cat}
+                              </span>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <div className={`w-1.5 h-1.5 rounded-full ${isProviderActive ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
+                                <span className={`text-[8px] uppercase font-bold tracking-widest ${isProviderActive ? 'text-emerald-500' : 'text-red-500'}`}>
+                                  {isProviderActive ? 'Active' : 'Missing Key'}
+                                </span>
+                              </div>
+                            </div>
                             {m.img && <span className="text-lg" title="Image Generation">🖼️</span>}
                           </div>
                           <h4 className={`text-lg font-bold mb-1 ${isSelected ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>
@@ -375,7 +405,7 @@ export default function AIModelSelector() {
                           </p>
                           
                           {isSelected && (
-                            <div className="absolute top-5 right-5 w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-300" style={{ backgroundColor: activeProvider.color }}>
+                            <div className="absolute top-5 right-5 w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-300" style={{ backgroundColor: isProviderActive ? activeProvider.color : '#ef4444' }}>
                               <Check className="w-3.5 h-3.5 text-white" />
                             </div>
                           )}
