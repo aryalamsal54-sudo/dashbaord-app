@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Sparkles, ChevronDown, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, ChevronDown, X, Check, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- Types ---
@@ -163,208 +163,57 @@ const PROVIDERS: Provider[] = [
 
 // --- Styles ---
 const STYLES = `
-.orb {
-  position: absolute; border-radius: 50%;
-  filter: blur(140px); pointer-events: none; z-index: 0;
-  transition: background 0.9s ease;
-}
-.orb-a { width:700px;height:700px;top:-280px;left:-180px;opacity:0.09; }
-.orb-b { width:500px;height:500px;bottom:-220px;right:-120px;opacity:0.06; }
-
-.scene {
-  --card-w: 460px;
-  --card-h: 290px;
-  --card-offset: 488px;
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1;
-  perspective: 1100px;
-  perspective-origin: 50% 50%;
-  overflow: hidden;
-}
-
-@media (max-width: 640px) {
-  .scene {
-    --card-w: 300px;
-    --card-h: 380px;
-    --card-offset: 316px;
-  }
-}
-
-.card-stage {
-  position: relative;
-  width: var(--card-w);
-  height: var(--card-h);
-  transform-style: preserve-3d;
-}
-
-.model-card {
+.beam-bg {
   position: absolute;
-  width: var(--card-w);
-  height: var(--card-h);
-  left: 50%; top: 50%;
-  transform: translate(-50%,-50%);
-  transform-style: preserve-3d;
-  backface-visibility: hidden;
-  cursor: pointer;
-  transition:
-    transform 0.52s cubic-bezier(0.22,1,0.36,1),
-    opacity   0.52s cubic-bezier(0.22,1,0.36,1),
-    filter    0.52s ease;
-  will-change: transform, opacity, filter;
-}
-
-.card-face {
-  position: absolute; inset: 0;
-  border-radius: 20px;
-  border: 1px solid var(--glass-border);
-  background: var(--bg-secondary);
-  display: flex; flex-direction: column;
-  justify-content: space-between;
-  padding: 26px 30px 22px;
+  inset: 0;
   overflow: hidden;
-  box-shadow:
-    0 1px 0 var(--glass-highlight) inset,
-    0 20px 48px var(--modal-overlay);
-  transition: border-color 0.4s, box-shadow 0.4s;
+  background: var(--modal-bg);
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.beam-ring {
+  position: absolute;
+  border-radius: 50%;
+  animation: spin linear infinite;
+}
+.beam-ring::before {
+  content: '';
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0%, transparent 60%, var(--pc) 100%);
+  mask-image: radial-gradient(transparent 60%, black 65%);
+  -webkit-mask-image: radial-gradient(transparent 60%, black 65%);
+  opacity: 0.6;
+  filter: blur(8px);
+}
+.beam-1 { width: 120vh; height: 120vh; animation-duration: 12s; }
+.beam-2 { width: 90vh; height: 90vh; animation-duration: 8s; animation-direction: reverse; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
 
-.card-face::before {
-  content:''; position:absolute;
-  top:0; right:18px;
-  width:72px; height:1px;
-  background: linear-gradient(to left, var(--pc), transparent);
-  opacity:0; transition:opacity 0.4s;
-}
-.card-face::after {
-  content:''; position:absolute;
-  top:18px; right:0;
-  width:1px; height:72px;
-  background: linear-gradient(to bottom, var(--pc), transparent);
-  opacity:0; transition:opacity 0.4s;
-}
-.model-card.is-center .card-face {
-  border-color: var(--glass-text-muted);
-  box-shadow:
-    0 1px 0 var(--glass-highlight) inset,
-    0 28px 60px var(--modal-overlay),
-    0 0 0 1.5px var(--pc),
-    0 0 40px color-mix(in srgb, var(--pc) 20%, transparent);
-}
-.model-card.is-center .card-face::before,
-.model-card.is-center .card-face::after { opacity: 0.65; }
-.model-card.is-confirmed.is-center .card-face {
-  box-shadow:
-    0 1px 0 var(--glass-highlight) inset,
-    0 28px 60px var(--modal-overlay),
-    0 0 0 2px var(--pc),
-    0 0 56px color-mix(in srgb, var(--pc) 28%, transparent);
-}
-
-.card-chip {
-  font-size:0.5rem; font-weight:600; text-transform:uppercase;
-  letter-spacing:0.18em; padding:3px 10px; border-radius:3px;
-  background:var(--glass-border); color:var(--glass-text-muted);
-  transition: background 0.35s, color 0.35s;
-}
-.model-card.is-center .card-chip {
-  background: var(--pclo); color: var(--pc);
-}
-.card-img-tag {
-  font-size:0.44rem; text-transform:uppercase; letter-spacing:0.14em;
-  color:#e879f9; background:rgba(232,121,249,0.1);
-  border:1px solid rgba(232,121,249,0.22); padding:2px 7px; border-radius:3px;
-}
-
-.card-name {
-  font-family: var(--font-sans);
-  font-size: 1.5rem; font-weight:800;
-  letter-spacing:-0.025em; line-height:1.1;
-  color:var(--glass-text-muted);
-  transition: color 0.35s;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-@media (max-width: 640px) {
-  .card-name {
-    white-space: normal;
-    font-size: 1.25rem;
-  }
-}
-.model-card.is-center .card-name { color:var(--text-primary); }
-
-.card-id {
-  font-size:0.5rem; letter-spacing:0.05em;
-  color:var(--glass-text-muted); font-weight:300;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.card-desc-text {
-  font-size:0.7rem; color:var(--glass-text-muted);
-  letter-spacing:0.04em; line-height:1.55;
-  margin-top: 4px;
-}
-
-.card-check {
-  width:26px; height:26px; border-radius:50%;
-  border:1.5px solid var(--glass-border);
-  display:flex; align-items:center; justify-content:center;
-  font-size:0.58rem; color:transparent;
-  transition: all 0.3s; flex-shrink:0;
-}
-.model-card.is-center .card-check { border-color:var(--pc); color:var(--pc); }
-.model-card.is-confirmed .card-check { background:var(--pc); border-color:var(--pc); color:var(--bg-primary); }
-
-.dot-v {
-  width:5px; height:5px; border-radius:50%;
-  background:var(--glass-border); cursor:pointer;
-  transition: all 0.25s; flex-shrink:0;
-}
-.dot-v.active { transform:scale(1.6); box-shadow:0 0 7px var(--pc); }
-
-.dot-h {
-  width:5px; height:5px; border-radius:50%;
-  background:var(--glass-border); cursor:pointer;
-  transition: all 0.25s; flex-shrink:0;
-}
-.dot-h.active { width:22px; border-radius:3px; box-shadow:0 0 5px var(--pc); }
-
-.hint-arr.bv { animation:bv 1.9s ease-in-out infinite; }
-.hint-arr.bh { animation:bh 1.9s ease-in-out infinite; }
-@keyframes bv { 0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)} }
-@keyframes bh { 0%,100%{transform:translateX(0)} 50%{transform:translateX(5px)} }
-
-.flash {
-  position:absolute; inset:0; pointer-events:none; z-index:5;
-  opacity:0; background:radial-gradient(ellipse at 50% 50%, var(--pc) 0%, transparent 68%);
-  transition: opacity 0.1s;
-}
-.flash.on { opacity:0.07; }
-
-/* Scrollbar hide */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* Custom Scrollbar */
+.model-scroll::-webkit-scrollbar { width: 6px; }
+.model-scroll::-webkit-scrollbar-track { background: transparent; }
+.model-scroll::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 10px; }
+.model-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
 `;
 
 export default function AIModelSelector() {
   const [isOpen, setIsOpen] = useState(false);
-  const [pIdx, setPIdx] = useState(0);
-  const [mIdx, setMIdx] = useState(0);
-  const [confirmed, setConfirmed] = useState<{pIdx: number, mIdx: number} | null>(null);
-  const [flash, setFlash] = useState(false);
-  
-  // Initialize from localStorage
+  const [activeProviderId, setActiveProviderId] = useState(PROVIDERS[0].id);
+  const [search, setSearch] = useState('');
+  const [confirmedId, setConfirmedId] = useState<string | null>(null);
+
   useEffect(() => {
     const stored = localStorage.getItem('selectedAIModel');
     if (stored) {
-      // Find the provider and model index
-      for (let p = 0; p < PROVIDERS.length; p++) {
-        const m = PROVIDERS[p].models.findIndex(m => m.id === stored);
-        if (m !== -1) {
-          setPIdx(p);
-          setMIdx(m);
-          setConfirmed({ pIdx: p, mIdx: m });
-          break;
-        }
-      }
+      setConfirmedId(stored);
+      const p = PROVIDERS.find(p => p.models.some(m => m.id === stored));
+      if (p) setActiveProviderId(p.id);
+    } else {
+      setConfirmedId(PROVIDERS[0].models[0].id);
     }
   }, []);
 
@@ -379,269 +228,169 @@ export default function AIModelSelector() {
       document.body.style.overflow = '';
     };
   }, [isOpen]);
-  // Sync CSS variables
-  const containerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (containerRef.current) {
-      const p = PROVIDERS[pIdx];
-      containerRef.current.style.setProperty('--pc', p.color);
-      containerRef.current.style.setProperty('--pclo', p.clo);
-    }
-  }, [pIdx, isOpen]);
 
-  const handleConfirm = () => {
-    const p = PROVIDERS[pIdx];
-    const m = p.models[mIdx];
-    setConfirmed({ pIdx, mIdx });
-    localStorage.setItem('selectedAIModel', m.id);
-    window.dispatchEvent(new Event('ai-model-changed'));
-    setTimeout(() => setIsOpen(false), 400); // Wait for animation
-  };
-
-  const jumpProvider = (i: number) => {
-    const target = Math.max(0, Math.min(PROVIDERS.length - 1, i));
-    if (target === pIdx) return;
-    setPIdx(target);
-    setMIdx(0);
-    setFlash(true);
-    setTimeout(() => setFlash(false), 150);
-  };
-
-  const jumpModel = (i: number) => {
-    const max = PROVIDERS[pIdx].models.length - 1;
-    setMIdx(Math.max(0, Math.min(max, i)));
-  };
-
-  // Keyboard navigation
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowUp') { e.preventDefault(); jumpProvider(Math.max(0, pIdx - 1)); }
-      if (e.key === 'ArrowDown') { e.preventDefault(); jumpProvider(Math.min(PROVIDERS.length - 1, pIdx + 1)); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); jumpModel(mIdx - 1); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); jumpModel(mIdx + 1); }
-      if (e.key === 'Enter') handleConfirm();
-      if (e.key === 'Escape') setIsOpen(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, pIdx, mIdx]);
-
-  // Wheel navigation
-  const wCoolRef = useRef(false);
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (wCoolRef.current) return;
-
-    // Filter out small inertia movements
-    if (Math.abs(e.deltaX) < 5 && Math.abs(e.deltaY) < 5) return;
-
-    wCoolRef.current = true;
-    setTimeout(() => wCoolRef.current = false, 600);
-    
-    const ax = Math.abs(e.deltaX);
-    const ay = Math.abs(e.deltaY);
-    if (ay > ax) jumpProvider(pIdx + (e.deltaY > 0 ? 1 : -1));
-    else jumpModel(mIdx + (e.deltaX > 0 ? 1 : -1));
-  }, [pIdx, mIdx]);
-
-  // Current selection for trigger button
-  const currentSelection = confirmed 
-    ? PROVIDERS[confirmed.pIdx].models[confirmed.mIdx] 
-    : PROVIDERS[0].models[0];
+  const activeProvider = PROVIDERS.find(p => p.id === activeProviderId) || PROVIDERS[0];
   
-  const currentProvider = confirmed
-    ? PROVIDERS[confirmed.pIdx]
-    : PROVIDERS[0];
+  const handleSelect = (modelId: string) => {
+    setConfirmedId(modelId);
+    localStorage.setItem('selectedAIModel', modelId);
+    window.dispatchEvent(new Event('ai-model-changed'));
+    setTimeout(() => setIsOpen(false), 300);
+  };
+
+  const currentProviderForColor = PROVIDERS.find(p => p.models.some(m => m.id === confirmedId)) || PROVIDERS[0];
+  const currentModel = currentProviderForColor.models.find(m => m.id === confirmedId) || currentProviderForColor.models[0];
+
+  const filteredModels = activeProvider.models.filter(m => 
+    m.name.toLowerCase().includes(search.toLowerCase()) || 
+    m.desc?.toLowerCase().includes(search.toLowerCase()) ||
+    m.id.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <>
       <style>{STYLES}</style>
-
-      {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(true)}
         className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-full hover:bg-[var(--bg-tertiary)] transition-colors group"
       >
-        <div className={`p-1 rounded-full bg-[var(--glass-highlight)] group-hover:bg-[var(--glass-border)] transition-colors`}>
-          <Sparkles className={`w-3.5 h-3.5`} style={{ color: currentProvider.color }} />
+        <div className="p-1 rounded-full bg-[var(--glass-highlight)] group-hover:bg-[var(--glass-border)] transition-colors">
+          <Sparkles className="w-3.5 h-3.5" style={{ color: currentProviderForColor.color }} />
         </div>
-        <span className="text-xs font-medium text-[var(--text-primary)] hidden sm:inline">{currentSelection.name}</span>
+        <span className="text-xs font-medium text-[var(--text-primary)] hidden sm:inline">{currentModel.name}</span>
         <ChevronDown className="w-3 h-3 text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] transition-colors" />
       </button>
 
-      {/* Full Screen Modal */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-[var(--modal-bg)] text-[var(--text-primary)] font-mono overflow-hidden"
-            ref={containerRef}
-            onWheel={handleWheel}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8"
+            style={{ '--pc': activeProvider.color } as any}
           >
-            {/* Background Orbs */}
-            <div className="orb orb-a" id="orbA" style={{ background: PROVIDERS[pIdx].color }} />
-            <div className="orb orb-b" id="orbB" style={{ background: PROVIDERS[pIdx].color }} />
-            <div className={`flash ${flash ? 'on' : ''}`} />
-
-            {/* Close Button */}
-            <button 
-              onClick={() => setIsOpen(false)}
-              className="absolute top-6 left-6 z-20 p-2 rounded-full bg-[var(--glass-bg)] hover:bg-[var(--glass-border)] transition-colors"
-            >
-              <X className="w-5 h-5 text-[var(--text-secondary)] hover:text-[var(--text-primary)]" />
-            </button>
-
-            {/* Mobile Nav Buttons */}
-            <button
-              className="absolute left-2 top-1/2 -translate-y-1/2 z-50 p-3 rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-primary)] md:hidden active:scale-95 transition-all backdrop-blur-md"
-              onClick={(e) => { e.stopPropagation(); jumpModel(mIdx - 1); }}
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-50 p-3 rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-primary)] md:hidden active:scale-95 transition-all backdrop-blur-md"
-              onClick={(e) => { e.stopPropagation(); jumpModel(mIdx + 1); }}
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-
-            <div className="absolute top-7 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 z-10 pointer-events-none">
-              <div className="text-[0.44rem] uppercase tracking-[0.3em] text-[var(--text-tertiary)]">// provider</div>
-              <div className="font-sans text-lg font-bold tracking-tight transition-colors duration-300" style={{ color: PROVIDERS[pIdx].color }}>
-                {PROVIDERS[pIdx].name}
-              </div>
-              <div className="text-[0.48rem] uppercase tracking-[0.16em] text-[var(--text-secondary)]">
-                {PROVIDERS[pIdx].desc}
-              </div>
+            {/* Background Beams */}
+            <div className="beam-bg">
+              <div className="beam-ring beam-1" />
+              <div className="beam-ring beam-2" />
+              <div className="absolute inset-0 bg-[var(--modal-bg)] opacity-80 backdrop-blur-3xl" />
             </div>
 
-            {/* HUD Confirm */}
-            <div className="absolute top-6 right-6 flex items-center gap-4 z-10">
-              <div className="text-right hidden sm:block">
-                <div className="text-[0.44rem] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1">
-                  {PROVIDERS[pIdx].name}
-                </div>
-                <div className="text-[0.68rem] font-semibold text-[var(--text-primary)] max-w-[200px] truncate">
-                  {PROVIDERS[pIdx].models[mIdx].name}
-                </div>
-              </div>
+            {/* Main Dashboard Modal */}
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="relative w-full max-w-6xl h-[85vh] bg-[var(--bg-primary)]/90 backdrop-blur-xl border border-[var(--border-primary)] rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden"
+              style={{ boxShadow: `0 0 40px ${activeProvider.clo}` }}
+            >
               <button 
-                onClick={handleConfirm}
-                className="px-5 py-2.5 rounded-lg text-[0.6rem] font-bold uppercase tracking-[0.14em] text-[var(--bg-primary)] transition-transform hover:-translate-y-px hover:brightness-110 active:scale-95"
-                style={{ background: PROVIDERS[pIdx].color }}
+                onClick={() => setIsOpen(false)}
+                className="absolute top-4 right-4 z-50 p-2 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
-                Confirm →
+                <X className="w-5 h-5" />
               </button>
-            </div>
 
-            {/* Vertical Rail (Providers) */}
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10 hidden md:flex">
-              <div className="text-[0.38rem] uppercase tracking-[0.22em] text-[var(--text-tertiary)] vertical-lr mb-1 writing-mode-vertical-lr" style={{ writingMode: 'vertical-lr' }}>
-                Provider
-              </div>
-              {PROVIDERS.map((p, i) => (
-                <div
-                  key={p.id}
-                  onClick={() => jumpProvider(i)}
-                  className={`dot-v ${i === pIdx ? 'active' : ''}`}
-                  style={i === pIdx ? { background: p.color, boxShadow: `0 0 7px ${p.color}` } : {}}
-                  title={p.name}
-                />
-              ))}
-            </div>
-
-            {/* Hints */}
-            <div className="absolute left-6 bottom-8 flex flex-col items-center gap-1 z-10 opacity-20 pointer-events-none hidden sm:flex">
-              <span className="hint-arr bv text-[0.65rem]">↕</span>
-              <span className="text-[0.38rem] uppercase tracking-[0.2em]">Provider</span>
-            </div>
-            <div className="absolute right-6 bottom-8 flex items-center gap-1 z-10 opacity-20 pointer-events-none hidden sm:flex">
-              <span className="text-[0.38rem] uppercase tracking-[0.2em]">Model</span>
-              <span className="hint-arr bh text-[0.65rem]">↔</span>
-            </div>
-
-            {/* Scene */}
-            <div className="scene">
-              <div className="card-stage">
-                {[-2, -1, 0, 1, 2].map((offset) => {
-                  const targetIdx = mIdx + offset;
-                  const models = PROVIDERS[pIdx].models;
-                  
-                  if (targetIdx < 0 || targetIdx >= models.length) return null;
-
-                  const m = models[targetIdx];
-                  const abs = Math.abs(offset);
-                  const isCenter = abs === 0;
-                  const isConfirmed = confirmed?.pIdx === pIdx && confirmed?.mIdx === targetIdx;
-
-                  // Styles for 3D positioning
-                  const z = -abs * 55;
-                  const sc = 1 - abs * 0.07;
-                  const op = abs === 0 ? 1 : abs === 1 ? 0.42 : 0.18;
-                  const blur = abs * 2;
-                  const ry = offset * -5;
-
-                  return (
-                    <div
-                      key={`${pIdx}-${targetIdx}`}
-                      className={`model-card ${isCenter ? 'is-center' : ''} ${isConfirmed ? 'is-confirmed' : ''}`}
-                      style={{
-                        transform: `translate(-50%,-50%) translate3d(calc(${offset} * var(--card-offset)),0,${z}px) rotateY(${ry}deg) scale(${sc})`,
-                        opacity: op,
-                        filter: blur > 0 ? `blur(${blur}px)` : 'none',
-                        zIndex: 10 - abs,
-                        pointerEvents: abs <= 1 ? 'all' : 'none',
-                        cursor: isCenter ? 'default' : 'pointer'
-                      }}
-                      onClick={() => !isCenter && jumpModel(targetIdx)}
+              {/* Sidebar: Companies */}
+              <div className="w-full md:w-72 shrink-0 border-b md:border-b-0 md:border-r border-[var(--border-primary)] bg-[var(--bg-secondary)]/50 flex flex-col z-10">
+                <div className="p-6 border-b border-[var(--border-primary)]">
+                  <h2 className="font-bold text-lg text-[var(--text-primary)] flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" style={{ color: activeProvider.color }} />
+                    AI Models
+                  </h2>
+                  <p className="text-xs text-[var(--text-tertiary)] mt-1">Select your intelligence</p>
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 space-y-1 model-scroll flex flex-row md:flex-col">
+                  {PROVIDERS.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setActiveProviderId(p.id); setSearch(''); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                        activeProviderId === p.id 
+                          ? 'bg-[var(--bg-primary)] shadow-sm border border-[var(--border-primary)]' 
+                          : 'hover:bg-[var(--bg-tertiary)] border border-transparent text-[var(--text-secondary)]'
+                      }`}
                     >
-                      <div className="card-face">
-                        {/* Top */}
-                        <div className="flex items-center gap-2">
-                          <span className="card-chip">{PROVIDERS[pIdx].icon} {PROVIDERS[pIdx].name}</span>
-                          {m.img && <span className="card-img-tag">🖼 Image</span>}
+                      <span className="text-xl">{p.icon}</span>
+                      <div className="text-left flex-1 hidden md:block">
+                        <div className={`text-sm font-semibold ${activeProviderId === p.id ? 'text-[var(--text-primary)]' : ''}`}>
+                          {p.name}
                         </div>
-                        
-                        {/* Mid */}
-                        <div className="flex-1 flex flex-col justify-center gap-2 py-1">
-                          <div className="card-name">{m.name}</div>
-                          <div className="card-id">{m.id}</div>
-                          <div className="card-desc-text">{m.desc || ''}</div>
-                        </div>
-
-                        {/* Bot */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-[0.44rem] uppercase tracking-[0.24em] text-white/15">{m.cat}</span>
-                          <span className="card-check">
-                            <Check className="w-3 h-3" />
-                          </span>
-                        </div>
+                        <div className="text-[10px] text-[var(--text-tertiary)] truncate">{p.models.length} models</div>
                       </div>
-                    </div>
-                  );
-                })}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Counter */}
-            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 text-[0.44rem] tracking-[0.2em] text-[var(--text-tertiary)] z-10 pointer-events-none">
-              {mIdx + 1} / {PROVIDERS[pIdx].models.length}
-            </div>
+              {/* Main Window: Models */}
+              <div className="flex-1 flex flex-col z-10 bg-gradient-to-br from-transparent to-[var(--bg-secondary)]/30 overflow-hidden">
+                <div className="p-6 border-b border-[var(--border-primary)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-[var(--text-primary)] transition-colors duration-300" style={{ color: activeProvider.color }}>
+                      {activeProvider.name}
+                    </h3>
+                    <p className="text-sm text-[var(--text-secondary)] mt-1">{activeProvider.desc}</p>
+                  </div>
+                  <div className="relative w-full sm:w-64 shrink-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]" />
+                    <input
+                      type="text"
+                      placeholder="Search models..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg pl-9 pr-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-secondary)] transition-colors"
+                    />
+                  </div>
+                </div>
 
-            {/* Horizontal Rail (Models) */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10 max-w-[60vw] overflow-hidden px-4">
-              {PROVIDERS[pIdx].models.slice(0, 22).map((_, i) => (
-                <div
-                  key={i}
-                  onClick={() => jumpModel(i)}
-                  className={`dot-h ${i === mIdx ? 'active' : ''}`}
-                  style={i === mIdx ? { background: PROVIDERS[pIdx].color, boxShadow: `0 0 5px ${PROVIDERS[pIdx].color}` } : {}}
-                />
-              ))}
-            </div>
-
+                <div className="flex-1 overflow-y-auto p-6 model-scroll">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredModels.map(m => {
+                      const isSelected = confirmedId === m.id;
+                      return (
+                        <div
+                          key={m.id}
+                          onClick={() => handleSelect(m.id)}
+                          className={`relative group p-5 rounded-2xl border cursor-pointer transition-all duration-300 flex flex-col h-full ${
+                            isSelected 
+                              ? 'bg-[var(--bg-secondary)] shadow-lg' 
+                              : 'bg-[var(--bg-primary)]/50 hover:bg-[var(--bg-secondary)] hover:shadow-md border-[var(--border-primary)]'
+                          }`}
+                          style={isSelected ? { borderColor: activeProvider.color, boxShadow: `0 4px 20px ${activeProvider.clo}` } : {}}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-primary)]">
+                              {m.cat}
+                            </span>
+                            {m.img && <span className="text-lg" title="Image Generation">🖼️</span>}
+                          </div>
+                          <h4 className={`text-lg font-bold mb-1 ${isSelected ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>
+                            {m.name}
+                          </h4>
+                          <p className="text-[10px] text-[var(--text-tertiary)] font-mono mb-3 truncate">{m.id}</p>
+                          <p className="text-sm text-[var(--text-secondary)] mt-auto leading-relaxed">
+                            {m.desc}
+                          </p>
+                          
+                          {isSelected && (
+                            <div className="absolute top-5 right-5 w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-300" style={{ backgroundColor: activeProvider.color }}>
+                              <Check className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {filteredModels.length === 0 && (
+                      <div className="col-span-full py-12 text-center text-[var(--text-tertiary)]">
+                        No models found matching "{search}"
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

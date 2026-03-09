@@ -36,7 +36,6 @@ export default function Dashboard() {
       <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
         <ThemeToggle />
         <AIModelSelector />
-        <AISettingsPanel />
       </div>
 
       <main className="relative z-10 max-w-5xl mx-auto px-4 md:px-6 pt-24 pb-12 md:py-24">
