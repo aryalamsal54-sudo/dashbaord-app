@@ -9,6 +9,7 @@ import physicsRoutes from "./server/routes/physics";
 import mathRoutes from "./server/routes/math";
 import programmingRoutes from "./server/routes/programming";
 import derivationsRoutes from "./server/routes/derivations";
+import electricalRoutes from "./server/routes/electrical";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,6 +27,7 @@ async function startServer() {
   app.use("/api/physics", physicsRoutes);
   app.use("/api/math", mathRoutes);
   app.use("/api/programming", programmingRoutes);
+  app.use("/api/electrical", electricalRoutes);
   
   // Derivations App Routes (mounted at root /api to match frontend expectations)
   app.use("/api", derivationsRoutes);

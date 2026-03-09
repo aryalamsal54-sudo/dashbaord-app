@@ -101,5 +101,17 @@ export function initSchema() {
     );
   `);
 
+  // Electrical Topics
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS electrical_topics (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      overview TEXT,
+      sections TEXT,
+      custom_qa TEXT,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   console.log('Database schema initialized');
 }

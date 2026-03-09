@@ -13,16 +13,25 @@ interface APIKeys {
 
 export async function smartRouteQuestion(question: string, keys: APIKeys) {
   try {
-    // 1. Analyze complexity using Gemini
-    const analysisPrompt = `Analyze the complexity of the following question on a scale of 1 to 10.
-    1-3: Simple factual recall or basic calculation.
-    4-7: Multi-step problem solving, intermediate logic.
-    8-10: Highly complex, advanced reasoning, coding, or abstract math.
+    // 1. Analyze complexity using Gemini with a more detailed prompt
+    const analysisPrompt = `Analyze the following engineering/academic question.
     
     Question: "${question}"
     
-    Return ONLY a JSON object with this exact structure:
-    {"complexity": number, "reasoning": "string"}`;
+    Evaluate based on:
+    1. Mathematical depth (calculus, differential equations, etc.)
+    2. Logical reasoning required (multi-step derivation vs simple fact)
+    3. Domain specificity (specialized engineering knowledge)
+    4. Coding/Algorithm complexity (if applicable)
+    
+    Rate complexity from 1 to 10:
+    1-3: Basic definitions, simple arithmetic, or common facts.
+    4-6: Intermediate problems, single-formula applications, basic explanations.
+    7-8: Advanced derivations, complex multi-part problems, specialized engineering topics.
+    9-10: Extremely difficult theoretical proofs, complex system design, or advanced research-level questions.
+    
+    Return ONLY a JSON object:
+    {"complexity": number, "reasoning": "string", "category": "math" | "physics" | "coding" | "general"}`;
 
     const analysisRes = await gemini.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -31,19 +40,16 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
     });
 
     let complexity = 5;
+    let category = 'general';
     try {
       const parsed = JSON.parse(analysisRes.text);
       complexity = parsed.complexity || 5;
+      category = parsed.category || 'general';
     } catch (e) {
       console.error("Failed to parse complexity:", e);
     }
 
-    // 2. Ping APIs to see which are active
-    // We'll do a quick check based on provided keys.
-    // In a real scenario, we'd make a tiny request to validate the key, but to save time/latency,
-    // we'll assume if the key is provided and looks valid (length > 10), it's active.
-    // We also always have Gemini available.
-    
+    // 2. Identify available APIs
     const activeAPIs = ['Gemini'];
     if ((keys.OpenAI && keys.OpenAI.length > 10) || process.env.OPENAI_API_KEY) activeAPIs.push('OpenAI');
     if ((keys.Anthropic && keys.Anthropic.length > 10) || process.env.ANTHROPIC_API_KEY) activeAPIs.push('Anthropic');
@@ -52,12 +58,12 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
     if (process.env.SAMBANOVA_API_KEY) activeAPIs.push('SambaNova');
     if (process.env.DEEPSEEK_API_KEY) activeAPIs.push('DeepSeek');
     
-    // 3. Choose the best model
+    // 3. Optimized Routing Logic
     let selectedModel = 'gemini-2.5-flash';
     let selectedProvider = 'Gemini';
 
     if (complexity >= 8) {
-      // High complexity: Prefer OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet), or DeepSeek
+      // Tier 1: Reasoning Heavyweights
       if (activeAPIs.includes('Anthropic')) {
         selectedProvider = 'Anthropic';
         selectedModel = 'claude-3-5-sonnet-20241022';
@@ -66,7 +72,7 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
         selectedModel = 'gpt-4o';
       } else if (activeAPIs.includes('DeepSeek')) {
         selectedProvider = 'DeepSeek';
-        selectedModel = 'deepseek-chat';
+        selectedModel = 'deepseek-chat'; // DeepSeek V3 is excellent for reasoning
       } else if (activeAPIs.includes('OpenRouter')) {
         selectedProvider = 'OpenRouter';
         selectedModel = 'anthropic/claude-3.5-sonnet';
@@ -75,22 +81,22 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
         selectedModel = 'gemini-3.1-pro-preview';
       }
     } else if (complexity >= 5) {
-      // Medium complexity: Prefer Groq (fast Llama 3.3 70B), SambaNova, or Gemini Flash
-      if (activeAPIs.includes('Groq')) {
+      // Tier 2: Balanced Performance
+      if (category === 'coding' && activeAPIs.includes('DeepSeek')) {
+        selectedProvider = 'DeepSeek';
+        selectedModel = 'deepseek-chat';
+      } else if (activeAPIs.includes('Groq')) {
         selectedProvider = 'Groq';
         selectedModel = 'llama-3.3-70b-versatile';
       } else if (activeAPIs.includes('SambaNova')) {
         selectedProvider = 'SambaNova';
         selectedModel = 'Meta-Llama-3.1-70B-Instruct';
-      } else if (activeAPIs.includes('DeepSeek')) {
-        selectedProvider = 'DeepSeek';
-        selectedModel = 'deepseek-chat';
       } else {
         selectedProvider = 'Gemini';
         selectedModel = 'gemini-2.5-flash';
       }
     } else {
-      // Low complexity: Prefer Groq (fast Llama 3.1 8B) or Gemini Flash Lite
+      // Tier 3: Speed Optimized
       if (activeAPIs.includes('Groq')) {
         selectedProvider = 'Groq';
         selectedModel = 'llama-3.1-8b-instant';
@@ -102,6 +108,7 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
 
     return {
       complexity,
+      category,
       activeAPIs,
       selectedProvider,
       selectedModel
@@ -110,6 +117,7 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
     console.error("Smart routing failed, falling back to Gemini:", error);
     return {
       complexity: 5,
+      category: 'general',
       activeAPIs: ['Gemini'],
       selectedProvider: 'Gemini',
       selectedModel: 'gemini-2.5-flash'

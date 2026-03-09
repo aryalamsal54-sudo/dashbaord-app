@@ -42,23 +42,82 @@ export default function Electrical() {
   const [customQ, setCustomQ] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem('electrical_topics');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setTopics(parsed);
-        if (parsed.length > 0) {
-          setActiveId(parsed[0].id);
+    // Try loading from backend first
+    fetch('/api/electrical/topics')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setTopics(data);
+          setActiveId(data[0].id);
+        } else {
+          // Fallback to localStorage if backend is empty
+          const saved = localStorage.getItem('electrical_topics');
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              setTopics(parsed);
+              if (parsed.length > 0) {
+                setActiveId(parsed[0].id);
+              }
+            } catch (e) {
+              console.error('Failed to parse saved topics', e);
+            }
+          }
         }
-      } catch (e) {
-        console.error('Failed to parse saved topics', e);
-      }
-    }
+      })
+      .catch(err => {
+        console.error("Failed to fetch topics from backend:", err);
+        // Fallback to localStorage
+        const saved = localStorage.getItem('electrical_topics');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            setTopics(parsed);
+            if (parsed.length > 0) {
+              setActiveId(parsed[0].id);
+            }
+          } catch (e) {
+            console.error('Failed to parse saved topics', e);
+          }
+        }
+      });
   }, []);
 
-  const saveTopics = (newTopics: ElectricalTopic[]) => {
+  const saveTopics = async (newTopics: ElectricalTopic[]) => {
     setTopics(newTopics);
     localStorage.setItem('electrical_topics', JSON.stringify(newTopics));
+    
+    // Also save to backend if there's an active topic being updated
+    const activeTopic = newTopics.find(t => t.id === activeId);
+    if (activeTopic) {
+      try {
+        await fetch('/api/electrical/topics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(activeTopic)
+        });
+      } catch (err) {
+        console.error("Failed to save topic to backend:", err);
+      }
+    }
+  };
+
+  const deleteTopic = async (id: string) => {
+    const newTopics = topics.filter(t => t.id !== id);
+    setTopics(newTopics);
+    localStorage.setItem('electrical_topics', JSON.stringify(newTopics));
+    
+    if (activeId === id) {
+      setActiveId(newTopics.length > 0 ? newTopics[0].id : null);
+    }
+
+    try {
+      await fetch(`/api/electrical/topics/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.error("Failed to delete topic from backend:", err);
+    }
   };
 
   // Key rotation logic
@@ -249,13 +308,21 @@ export default function Electrical() {
             <div className="px-4 py-4 text-xs text-[var(--text-tertiary)] italic">No topics saved yet.</div>
           )}
           {topics.map((topic) => (
-            <button 
-              key={topic.id}
-              onClick={() => { setActiveId(topic.id); setSidebarOpen(false); }}
-              className={`w-full text-left px-4 py-2.5 rounded-lg text-[13px] transition-colors flex items-center gap-3 ${activeId === topic.id ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'}`}
-            >
-              <span className="truncate">{topic.title}</span>
-            </button>
+            <div key={topic.id} className="group relative">
+              <button 
+                onClick={() => { setActiveId(topic.id); setSidebarOpen(false); }}
+                className={`w-full text-left px-4 py-2.5 rounded-lg text-[13px] transition-colors flex items-center gap-3 pr-10 ${activeId === topic.id ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]'}`}
+              >
+                <span className="truncate">{topic.title}</span>
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); deleteTopic(topic.id); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-[var(--text-tertiary)] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                title="Delete Topic"
+              >
+                <X size={14} />
+              </button>
+            </div>
           ))}
         </nav>
       </aside>
