@@ -16,6 +16,7 @@ export default function AISelectionAnimation({ modelId, isVisible, onComplete }:
   const isSearching = !modelId || modelId === 'searching';
 
   if (!isSearching) {
+    // Try to find exact match first
     for (const provider of PROVIDERS) {
       const model = provider.models.find(m => m.id === modelId);
       if (model) {
@@ -25,10 +26,31 @@ export default function AISelectionAnimation({ modelId, isVisible, onComplete }:
       }
     }
 
-    // Fallback if model not found in our list
+    // If no exact match, try to extract model ID from descriptive string like "Provider (model-id) [Complexity: X/10]"
+    if (!selectedModel && modelId) {
+      const match = modelId.match(/\(([^)]+)\)/);
+      const extractedId = match ? match[1] : null;
+      
+      if (extractedId) {
+        for (const provider of PROVIDERS) {
+          const model = provider.models.find(m => m.id === extractedId);
+          if (model) {
+            selectedModel = model;
+            selectedProvider = provider;
+            break;
+          }
+        }
+      }
+    }
+
+    // Fallback if model still not found in our list
     if (!selectedModel || !selectedProvider) {
+      // Try to extract provider name from the start of the string
+      const providerNameMatch = modelId?.match(/^([^(]+)/);
+      const providerName = providerNameMatch ? providerNameMatch[1].trim() : 'AI Provider';
+      
       selectedModel = { name: modelId as string, desc: 'Advanced AI Model', cat: 'AI' };
-      selectedProvider = { name: 'AI Provider', icon: <Cpu className="w-6 h-6" />, color: '#10b981' };
+      selectedProvider = { name: providerName, icon: <Cpu className="w-6 h-6" />, color: '#10b981' };
     }
   } else {
     selectedModel = { name: 'Analyzing Complexity', desc: 'Routing to optimal compute unit', cat: 'AI' };

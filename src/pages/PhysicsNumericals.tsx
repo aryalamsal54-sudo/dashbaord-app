@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Menu, X, Sparkles } from 'lucide-react';
+import { ChevronLeft, Menu, X, Sparkles, AlertTriangle } from 'lucide-react';
 import { Question } from '../types';
 import AISelectionAnimation from '../components/ai/AISelectionAnimation';
 import MarkdownRenderer from '../components/MarkdownRenderer';
@@ -27,6 +27,7 @@ export default function PhysicsNumericals() {
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [showSelectionAnim, setShowSelectionAnim] = useState(false);
   const [animModelId, setAnimModelId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/physics/numericals')
@@ -53,6 +54,8 @@ export default function PhysicsNumericals() {
     setAnimModelId('searching');
     setShowSelectionAnim(true);
     setLoading(true);
+    setSolution(null);
+    setError(null);
 
     try {
       const { aiService } = await import('../services/aiService');
@@ -70,6 +73,12 @@ export default function PhysicsNumericals() {
           apiKeys
         })
       });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to solve problem. Please check your API keys.');
+      }
+
       const data = await res.json();
       
       if (data.modelUsed && !data.cached) {
@@ -85,8 +94,9 @@ export default function PhysicsNumericals() {
         setSolution(data.solution);
         setModelUsed(data.modelUsed);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setError(e.message);
       setShowSelectionAnim(false);
     } finally {
       setLoading(false);
@@ -299,24 +309,31 @@ export default function PhysicsNumericals() {
                   </div>
                 ) : (
                   <div className="h-64 flex flex-col items-center justify-center text-center border-2 border-dashed border-[var(--border-primary)] rounded-xl bg-[var(--card-bg)]">
-                    <div className="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-500 mb-4">
-                      <Sparkles size={20} />
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${error ? 'bg-red-50 text-red-500' : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500'}`}>
+                      {error ? <AlertTriangle size={20} /> : <Sparkles size={20} />}
                     </div>
-                    <p className="text-[var(--text-secondary)] text-sm mb-6 max-w-xs">
-                      Generate a step-by-step solution using our AI model.
-                    </p>
+                    {error ? (
+                      <div className="max-w-xs">
+                        <p className="text-red-600 text-sm font-medium mb-2">Error Solving Problem</p>
+                        <p className="text-[var(--text-tertiary)] text-[11px] mb-6">{error}</p>
+                      </div>
+                    ) : (
+                      <p className="text-[var(--text-secondary)] text-sm mb-6 max-w-xs">
+                        Generate a step-by-step solution using our AI model.
+                      </p>
+                    )}
                     <button 
                       onClick={() => solveWithAI()}
                       disabled={loading}
-                      className="px-6 py-2.5 bg-[var(--accent-primary)] text-[var(--bg-primary)] rounded-lg text-sm font-medium hover:bg-[var(--accent-secondary)] transition-all disabled:opacity-70 flex items-center gap-2"
+                      className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-70 flex items-center gap-2 ${error ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-[var(--accent-primary)] text-[var(--bg-primary)] hover:bg-[var(--accent-secondary)]'}`}
                     >
                       {loading ? (
                         <>
-                          <span className="w-4 h-4 border-2 border-[var(--bg-primary)]/30 border-t-[var(--bg-primary)] rounded-full animate-spin" />
+                          <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                           Solving...
                         </>
                       ) : (
-                        <>⚡ Solve with AI</>
+                        <>{error ? 'Retry with AI' : '⚡ Solve with AI'}</>
                       )}
                     </button>
                   </div>

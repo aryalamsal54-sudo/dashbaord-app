@@ -1,7 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Initialize Gemini for complexity analysis (always available)
-const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const getGemini = () => {
+  const key = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY is missing");
+  return new GoogleGenAI({ apiKey: key });
+};
 
 interface APIKeys {
   OpenAI?: string;
@@ -13,6 +17,11 @@ interface APIKeys {
 
 export async function smartRouteQuestion(question: string, keys: APIKeys) {
   try {
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    if (!geminiKey) {
+      throw new Error("GEMINI_API_KEY is missing. Please configure it in the Secrets panel.");
+    }
+
     // 1. Analyze complexity using Gemini with a more detailed prompt
     const analysisPrompt = `Analyze the following engineering/academic question.
     
@@ -33,7 +42,7 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
     Return ONLY a JSON object:
     {"complexity": number, "reasoning": "string", "category": "math" | "physics" | "coding" | "general"}`;
 
-    const analysisRes = await gemini.models.generateContent({
+    const analysisRes = await getGemini().models.generateContent({
       model: 'gemini-2.5-flash',
       contents: analysisPrompt,
       config: { responseMimeType: "application/json" }
@@ -127,7 +136,7 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
 
 export async function generateWithProvider(provider: string, model: string, prompt: string, keys: APIKeys) {
   if (provider === 'Gemini') {
-    const response = await gemini.models.generateContent({
+    const response = await getGemini().models.generateContent({
       model: model,
       contents: prompt,
     });
@@ -235,7 +244,7 @@ export async function generateWithProvider(provider: string, model: string, prom
   }
 
   // Fallback
-  const response = await gemini.models.generateContent({
+  const response = await getGemini().models.generateContent({
     model: 'gemini-2.5-flash',
     contents: prompt,
   });

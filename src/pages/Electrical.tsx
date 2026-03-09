@@ -139,39 +139,45 @@ export default function Electrical() {
     setAnimModelId('searching');
     setShowSelectionAnim(true);
 
-    const apiKey = getNextKey();
-    const response = await fetch('/api/solve', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-AI-API-Key': apiKey,
-      },
-      body: JSON.stringify({
-        questionId: 'ee-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-        question: prompt,
-        provider: 'Gemini',
-        model: 'gemini-2.0-flash',
-        topic: 'General Chat',
-        forceRefresh: true
-      })
-    });
+    try {
+      const apiKey = getNextKey();
+      const response = await fetch('/api/solve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-AI-API-Key': apiKey,
+        },
+        body: JSON.stringify({
+          questionId: 'ee-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+          question: prompt,
+          provider: 'Gemini',
+          model: 'gemini-2.0-flash',
+          topic: 'General Chat',
+          forceRefresh: true
+        })
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to generate content. Please check your API keys.');
+      }
+      const data = await response.json();
+      
+      if (data.modelUsed && !data.cached) {
+        setAnimModelId(data.modelUsed);
+        // Keep animation visible for a bit to show the selected model
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setShowSelectionAnim(false);
+      } else {
+        setShowSelectionAnim(false);
+      }
+      
+      return data.solution;
+    } catch (error: any) {
       setShowSelectionAnim(false);
-      throw new Error('Failed to generate content');
+      console.error(error);
+      throw error; // Re-throw to be handled by the caller
     }
-    const data = await response.json();
-    
-    if (data.modelUsed && !data.cached) {
-      setAnimModelId(data.modelUsed);
-      // Keep animation visible for a bit to show the selected model
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setShowSelectionAnim(false);
-    } else {
-      setShowSelectionAnim(false);
-    }
-    
-    return data.solution;
   };
 
   const handleSearch = async (e: React.FormEvent) => {
