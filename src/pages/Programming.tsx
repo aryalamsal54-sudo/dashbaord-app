@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Terminal, 
+  ChevronLeft,
   ChevronRight, 
   Code2, 
   Cpu, 
@@ -85,6 +87,13 @@ export default function Programming() {
       <header className="fixed top-0 w-full bg-[var(--bg-primary)]/80 backdrop-blur-xl border-b border-[var(--border-primary)] z-40 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Link 
+              to="/" 
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--bg-tertiary)] hover:bg-blue-500/10 text-[var(--text-secondary)] hover:text-blue-500 border border-[var(--border-primary)] hover:border-blue-500/30 transition-all mr-1"
+              title="Back to Dashboard"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Link>
             <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
               <Terminal className="w-5 h-5 text-blue-500" />
             </div>

@@ -84,8 +84,8 @@ export default function PhysicsNumericals() {
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[var(--bg-secondary)] text-[var(--text-primary)] border-r border-[var(--border-primary)] transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
         <div className="p-6 border-b border-[var(--border-primary)]">
-          <Link to="/" className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--text-primary)] mb-3 transition-colors">
-            <ChevronLeft size={12} /> Study Hub
+          <Link to="/" className="inline-flex items-center gap-2 px-3 py-1.5 -ml-3 mb-4 rounded-lg text-[11px] font-medium uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+            <ChevronLeft size={14} /> Dashboard
           </Link>
           <h1 className="font-serif text-xl text-[var(--text-primary)] mb-1">Physics Bank</h1>
           <p className="font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)]">SH 401 · TU IOE</p>
