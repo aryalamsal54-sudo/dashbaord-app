@@ -26,26 +26,17 @@ router.post('/solve', async (req, res) => {
 
   let prompt = `You are a physics expert. Derive the following: ${question}
         
-        Format the output as HTML with the following structure:
-        <div class="ai-solution">
-          <div class="sol-step">
-            <p class="sol-text">Explanation of the step</p>
-            <div class="math-block">Equation (use LaTeX if needed, or plain text math)</div>
-          </div>
-          ...
-          <div class="sol-result">
-            <span class="sol-result-label">Final Result</span>
-            <span class="sol-result-val">Equation</span>
-          </div>
-        </div>
+        Format the output using Markdown. 
+        Use LaTeX for all mathematical equations and symbols.
+        - Use $$ ... $$ for block equations.
+        - Use $ ... $ for inline equations.
         
-        Use <code class="math"> for inline math.
-        Do not use Markdown code blocks. Return raw HTML.`;
+        Structure your response with clear headings (e.g., ## Step 1: ...), bullet points for explanations, and a bold "Final Result" section at the end.`;
 
   if (topic === 'General Chat') {
     prompt = `You are a helpful AI assistant. Answer the following question: ${question}
     
-    Format your response in clean HTML. Use <p>, <ul>, <li>, <strong>, <em>, and <code> tags where appropriate. Do not use Markdown.`;
+    Format your response using Markdown. Use headings, bullet points, and bold text for clarity. If you include any math, use LaTeX ($ for inline, $$ for block).`;
   }
 
   try {

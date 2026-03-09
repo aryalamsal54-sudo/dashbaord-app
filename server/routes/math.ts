@@ -24,21 +24,12 @@ router.post('/solve', async (req, res) => {
   try {
     const prompt = `You are a mathematics expert. Solve the following problem step-by-step: ${question}
     
-    Format the output as HTML with the following structure:
-    <div class="ai-solution">
-      <div class="sol-step">
-        <p class="sol-text">Explanation of the step</p>
-        <div class="math-block">Equation (use LaTeX if needed, or plain text math)</div>
-      </div>
-      ...
-      <div class="sol-result">
-        <span class="sol-result-label">Final Answer</span>
-        <span class="sol-result-val">Result</span>
-      </div>
-    </div>
+    Format the output using Markdown. 
+    Use LaTeX for all mathematical equations and symbols.
+    - Use $$ ... $$ for block equations.
+    - Use $ ... $ for inline equations.
     
-    Use <code class="math"> for inline math.
-    Do not use Markdown code blocks. Return raw HTML.`;
+    Structure your response with clear headings (e.g., ## Step 1: ...), bullet points for explanations, and a bold "Final Answer" section at the end.`;
 
     // Smart Routing
     const routing = await smartRouteQuestion(question, apiKeys);

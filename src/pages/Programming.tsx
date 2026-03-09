@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Topic, Question, Solution } from '../types';
 import AISelectionAnimation from '../components/ai/AISelectionAnimation';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 export default function Programming() {
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -307,13 +308,9 @@ export default function Programming() {
                       </div>
                     </div>
 
-                    <div 
-                      className="prose dark:prose-invert prose-sm max-w-none 
-                        prose-pre:bg-[var(--bg-primary)] prose-pre:border prose-pre:border-[var(--border-primary)] prose-pre:rounded-xl
-                        prose-code:text-blue-400 prose-code:font-mono
-                        prose-headings:text-[var(--text-primary)] prose-p:text-[var(--text-secondary)]
-                        prose-strong:text-[var(--text-primary)]"
-                      dangerouslySetInnerHTML={{ __html: solution.solution || '' }}
+                    <MarkdownRenderer 
+                      content={solution.solution || ''} 
+                      className="prose-sm"
                     />
                   </div>
                 )}

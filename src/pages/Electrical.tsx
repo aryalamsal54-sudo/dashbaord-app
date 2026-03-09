@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Menu, X, Sparkles, BookOpen, Sigma, Calculator, Cpu, FileText, Globe, AlertTriangle, Send } from 'lucide-react';
 import { aiService } from '../services/aiService';
 import AISelectionAnimation from '../components/ai/AISelectionAnimation';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 interface ElectricalTopic {
   id: string;
@@ -111,7 +112,11 @@ export default function Electrical() {
 
     setLoadingOverview(true);
     try {
-      const prompt = `You are an expert IOE Nepal Electrical & Electronics professor. Provide a clear, concise definition and overview of "${searchQuery}". Format as clean HTML using only <p>, <h3>, <ul>, <li>, <strong>, <code>, <table> tags. Do not use Markdown.`;
+      const prompt = `You are an expert IOE Nepal Electrical & Electronics professor. Provide a clear, concise definition and overview of "${searchQuery}". 
+      
+      Format the output using Markdown. 
+      Use LaTeX for all mathematical equations and symbols ($ for inline, $$ for block).
+      Use headings, bullet points, and bold text for clarity.`;
       
       const overview = await generateElectricalContent(prompt);
       
@@ -143,7 +148,11 @@ export default function Electrical() {
       const topic = topics.find(t => t.id === activeId);
       if (!topic) return;
 
-      const prompt = `You are an expert IOE Nepal Electrical & Electronics professor. Provide the "${sectionTitle}" for the topic "${topic.title}". Format as clean HTML using only <p>, <h3>, <ul>, <li>, <strong>, <code>, <table> tags. Do not use Markdown.`;
+      const prompt = `You are an expert IOE Nepal Electrical & Electronics professor. Provide the "${sectionTitle}" for the topic "${topic.title}". 
+      
+      Format the output using Markdown. 
+      Use LaTeX for all mathematical equations and symbols ($ for inline, $$ for block).
+      Use headings, bullet points, and bold text for clarity.`;
       
       const content = await generateElectricalContent(prompt);
       
@@ -177,7 +186,11 @@ export default function Electrical() {
       const topic = topics.find(t => t.id === activeId);
       if (!topic) return;
 
-      const prompt = `You are an expert IOE Nepal Electrical & Electronics professor. Answer this student's question about "${topic.title}": "${questionToAsk}". Format as clean HTML using only <p>, <h3>, <ul>, <li>, <strong>, <code>, <table> tags. Do not use Markdown.`;
+      const prompt = `You are an expert IOE Nepal Electrical & Electronics professor. Answer this student's question about "${topic.title}": "${questionToAsk}". 
+      
+      Format the output using Markdown. 
+      Use LaTeX for all mathematical equations and symbols ($ for inline, $$ for block).
+      Use headings, bullet points, and bold text for clarity.`;
       
       const answer = await generateElectricalContent(prompt);
       
@@ -371,8 +384,8 @@ export default function Electrical() {
                             <section.icon size={20} />
                             <h2 className="font-serif text-2xl font-bold text-[var(--text-primary)]">{section.title}</h2>
                           </div>
-                          <div className="prose prose-slate dark:prose-invert max-w-none">
-                            <div dangerouslySetInnerHTML={{ __html: activeTopic.sections[section.id] }} />
+                          <div className="prose dark:prose-invert max-w-none">
+                            <MarkdownRenderer content={activeTopic.sections[section.id]} />
                           </div>
                         </div>
                       );
@@ -403,8 +416,8 @@ export default function Electrical() {
                     </div>
                     
                     {activeTopic.sections['ioe'] ? (
-                      <div className="prose prose-slate dark:prose-invert max-w-none">
-                        <div dangerouslySetInnerHTML={{ __html: activeTopic.sections['ioe'] }} />
+                      <div className="prose dark:prose-invert max-w-none">
+                        <MarkdownRenderer content={activeTopic.sections['ioe']} />
                       </div>
                     ) : (
                       <p className="text-sm text-[var(--text-secondary)]">
@@ -455,7 +468,7 @@ export default function Electrical() {
                               <Sparkles size={14} />
                             </div>
                             <div className="bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-2xl rounded-tl-none px-5 py-4 text-sm text-[var(--text-primary)] prose prose-slate dark:prose-invert max-w-none">
-                              <div dangerouslySetInnerHTML={{ __html: qa.a }} />
+                              <MarkdownRenderer content={qa.a} />
                             </div>
                           </div>
                         </div>

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Menu, X, Sparkles } from 'lucide-react';
 import { Topic, Question } from '../types';
 import AISelectionAnimation from '../components/ai/AISelectionAnimation';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 
 export default function PhysicsDerivations() {
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -241,7 +242,7 @@ export default function PhysicsDerivations() {
                         {modelUsed || 'AI Generated'}
                       </span>
                     </div>
-                    <div dangerouslySetInnerHTML={{ __html: solution }} />
+                    <MarkdownRenderer content={solution} />
                   </div>
                 ) : (
                   <div className="h-64 flex flex-col items-center justify-center text-center border-2 border-dashed border-[var(--border-primary)] rounded-xl bg-[var(--card-bg)]">

@@ -44,47 +44,33 @@ router.post('/solve', async (req, res) => {
     if (tab === 'derivations') {
         prompt = `You are a physics expert. Derive the following: ${question}
         
-        Format the output as HTML with the following structure:
-        <div class="ai-solution">
-          <div class="sol-step">
-            <p class="sol-text">Explanation of the step</p>
-            <div class="math-block">Equation (use LaTeX if needed, or plain text math)</div>
-          </div>
-          ...
-          <div class="sol-result">
-            <span class="sol-result-label">Final Result</span>
-            <span class="sol-result-val">Equation</span>
-          </div>
-        </div>
+        Format the output using Markdown. 
+        Use LaTeX for all mathematical equations and symbols.
+        - Use $$ ... $$ for block equations.
+        - Use $ ... $ for inline equations.
         
-        Use <code class="math"> for inline math.
-        Do not use Markdown code blocks. Return raw HTML.`;
+        Structure your response with clear headings (e.g., ## Step 1: ...), bullet points for explanations, and a bold "Final Result" section at the end.`;
     } else {
         // Numerical prompt
         prompt = `You are an expert university physics solver. Solve the following problem step-by-step: ${question}
 
-        Format the output as HTML with the following structure:
-        <div class="ai-solution">
-          <div class="sol-step">
-            <p class="sol-text">GIVEN:</p>
-            <div class="math-block">List knowns</div>
-          </div>
-          <div class="sol-step">
-            <p class="sol-text">FORMULA:</p>
-            <div class="math-block">Relevant equations</div>
-          </div>
-          <div class="sol-step">
-            <p class="sol-text">WORKING:</p>
-            <div class="math-block">Step-by-step calculation</div>
-          </div>
-          <div class="sol-result">
-            <span class="sol-result-label">Answer</span>
-            <span class="sol-result-val">Final numerical result with units</span>
-          </div>
-        </div>
+        Format the output using Markdown. 
+        Use LaTeX for all mathematical equations and symbols.
+        - Use $$ ... $$ for block equations.
+        - Use $ ... $ for inline equations.
 
-        Use <code class="math"> for inline math.
-        Do not use Markdown code blocks. Return raw HTML.`;
+        Structure your response with the following sections:
+        ## Given:
+        (List known quantities with symbols and units)
+        
+        ## Formula:
+        (State the relevant equations used)
+        
+        ## Working:
+        (Step-by-step calculation with explanations)
+        
+        ## Answer:
+        (Final numerical result with units in bold)`;
     }
 
     // Smart Routing

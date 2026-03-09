@@ -18,7 +18,7 @@ export default function AISettingsPanel() {
     if (storedModel) setSelectedModel(storedModel);
 
     const storedImageModel = localStorage.getItem('selectedImageModel');
-    if (storedImageModel) setSelectedImageModel(storedImageModel);
+    if (storedImageModel) setSelectedImageModel(storedImageModel as any);
 
     const keys: Record<string, string> = {};
     AI_MODELS.forEach(m => {
