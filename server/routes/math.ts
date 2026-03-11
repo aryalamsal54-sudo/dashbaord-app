@@ -15,7 +15,8 @@ router.post('/solve', async (req, res) => {
   const { questionId, question, topic, forceRefresh, apiKeys = {} } = req.body;
   
   if (!forceRefresh) {
-    const cached = db.prepare('SELECT * FROM math_solutions WHERE question_id = ?').get(questionId) as any;
+    const { rows } = await db.query('SELECT * FROM math_solutions WHERE question_id = $1', [questionId]);
+    const cached = rows[0];
     if (cached && cached.solution) {
       return res.json({ solution: cached.solution, modelUsed: cached.model_used, cached: true });
     }
@@ -38,15 +39,15 @@ router.post('/solve', async (req, res) => {
     const solution = await generateWithProvider(routing.selectedProvider, routing.selectedModel, prompt, apiKeys);
     const modelUsed = `${routing.selectedProvider} (${routing.selectedModel}) [Complexity: ${routing.complexity}/10]`;
 
-    db.prepare(`
+    await db.query(`
       INSERT INTO math_solutions (question_id, question, solution, model_used, solved, topic)
-      VALUES (?, ?, ?, ?, 1, ?)
+      VALUES ($1, $2, $3, $4, 1, $5)
       ON CONFLICT(question_id) DO UPDATE SET
-        solution = excluded.solution,
-        model_used = excluded.model_used,
+        solution = EXCLUDED.solution,
+        model_used = EXCLUDED.model_used,
         solved = 1,
         updated_at = CURRENT_TIMESTAMP
-    `).run(questionId, question, solution, modelUsed, topic || 'unknown');
+    `, [questionId, question, solution, modelUsed, topic || 'unknown']);
 
     res.json({ solution, modelUsed, cached: false, complexity: routing.complexity });
   } catch (error: any) {

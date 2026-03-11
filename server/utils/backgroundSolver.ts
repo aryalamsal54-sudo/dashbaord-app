@@ -20,11 +20,11 @@ async function solveQuestion(table: string, row: any) {
     const solution = await generateWithProvider(routing.selectedProvider, routing.selectedModel, prompt, {});
     const modelUsed = `${routing.selectedProvider} (${routing.selectedModel}) [Complexity: ${routing.complexity}/10]`;
 
-    db.prepare(`
+    await db.query(`
       UPDATE ${table}
-      SET solution = ?, model_used = ?, solved = 1, updated_at = CURRENT_TIMESTAMP
-      WHERE question_id = ?
-    `).run(solution, modelUsed, question_id);
+      SET solution = $1, model_used = $2, solved = 1, updated_at = CURRENT_TIMESTAMP
+      WHERE question_id = $3
+    `, [solution, modelUsed, question_id]);
 
     console.log(`[Background Solver] Solved ${question_id} successfully.`);
   } catch (error) {
@@ -43,7 +43,8 @@ export async function startBackgroundSolver() {
     let found = false;
     
     for (const table of tables) {
-      const unsolved = db.prepare(`SELECT * FROM ${table} WHERE solved = 0 ORDER BY RANDOM() LIMIT 1`).get() as any;
+      const { rows } = await db.query(`SELECT * FROM ${table} WHERE solved = 0 ORDER BY RANDOM() LIMIT 1`);
+      const unsolved = rows[0];
       
       if (unsolved) {
         found = true;

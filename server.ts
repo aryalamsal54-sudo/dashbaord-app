@@ -21,7 +21,7 @@ async function startServer() {
   app.use(express.json());
 
   // Initialize DB Schema
-  initSchema();
+  await initSchema();
   
   // Start background solver
   startBackgroundSolver().catch(console.error);

@@ -1,21 +1,30 @@
 import db from "../db";
 
 // Rate limit tracking
-export function markModelAsRateLimited(provider: string, model: string) {
+export async function markModelAsRateLimited(provider: string, model: string) {
   const today = new Date().toISOString().split('T')[0];
-  db.prepare(`
-    INSERT OR IGNORE INTO rate_limits (provider, model, date)
-    VALUES (?, ?, ?)
-  `).run(provider, model, today);
+  try {
+    await db.query(`
+      INSERT INTO rate_limits (provider, model, date)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (provider, model, date) DO NOTHING
+    `, [provider, model, today]);
+  } catch (e) {
+    console.error("Error marking rate limit", e);
+  }
 }
 
-export function isModelRateLimited(provider: string, model: string): boolean {
+export async function isModelRateLimited(provider: string, model: string): Promise<boolean> {
   const today = new Date().toISOString().split('T')[0];
-  const limit = db.prepare(`
-    SELECT 1 FROM rate_limits 
-    WHERE provider = ? AND model = ? AND date = ?
-  `).get(provider, model, today);
-  return !!limit;
+  try {
+    const { rows } = await db.query(`
+      SELECT 1 FROM rate_limits 
+      WHERE provider = $1 AND model = $2 AND date = $3
+    `, [provider, model, today]);
+    return rows.length > 0;
+  } catch (e) {
+    return false;
+  }
 }
 
 interface APIKeys {
@@ -52,10 +61,10 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
     let selectedProvider = 'Groq';
 
     // Helper to check if a model is available (not rate limited)
-    const isAvailable = (provider: string, model: string) => !isModelRateLimited(provider, model);
+    const isAvailable = async (provider: string, model: string) => !(await isModelRateLimited(provider, model));
 
     if (complexity >= 5) {
-      if (activeAPIs.includes('Groq') && isAvailable('Groq', 'llama-3.3-70b-versatile')) {
+      if (activeAPIs.includes('Groq') && await isAvailable('Groq', 'llama-3.3-70b-versatile')) {
         selectedProvider = 'Groq';
         selectedModel = 'llama-3.3-70b-versatile';
       } else {
@@ -63,7 +72,7 @@ export async function smartRouteQuestion(question: string, keys: APIKeys) {
         selectedModel = 'puter-model';
       }
     } else {
-      if (activeAPIs.includes('Groq') && isAvailable('Groq', 'llama-3.1-8b-instant')) {
+      if (activeAPIs.includes('Groq') && await isAvailable('Groq', 'llama-3.1-8b-instant')) {
         selectedProvider = 'Groq';
         selectedModel = 'llama-3.1-8b-instant';
       } else {
@@ -132,7 +141,7 @@ export async function generateWithProvider(provider: string, model: string, prom
     
   } catch (error: any) {
     if (error.status === 429 || error.message?.includes('RESOURCE_EXHAUSTED') || error.message?.includes('quota') || error.message?.includes('rate limit')) {
-      markModelAsRateLimited(provider, model);
+      await markModelAsRateLimited(provider, model);
     }
     throw error;
   }
