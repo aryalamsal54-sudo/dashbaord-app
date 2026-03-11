@@ -28,6 +28,7 @@ export default function Math() {
   const [showSelectionAnim, setShowSelectionAnim] = useState(false);
   const [animModelId, setAnimModelId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [solvedQuestions, setSolvedQuestions] = useState<Set<string>>(new Set());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -35,7 +36,25 @@ export default function Math() {
     fetch('/api/math/topics')
       .then(res => res.json())
       .then(data => setTopics(data));
+      
+    const stored = localStorage.getItem('solvedMathQuestions');
+    if (stored) {
+      try {
+        setSolvedQuestions(new Set(JSON.parse(stored)));
+      } catch (e) {
+        console.error("Failed to parse solved questions", e);
+      }
+    }
   }, []);
+
+  const markAsSolved = (id: string) => {
+    setSolvedQuestions(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      localStorage.setItem('solvedMathQuestions', JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (audioBase64) {
@@ -97,6 +116,9 @@ export default function Math() {
           setExplanation(data.explanation);
           setAudioBase64(data.audioBase64);
           setModelUsed(data.modelUsed);
+          if (data.solution) {
+            markAsSolved(`${selectedQuestion.topicId}-math-${selectedQuestion.idx}`);
+          }
         }, 2000);
       } else {
         setShowSelectionAnim(false);
@@ -104,6 +126,9 @@ export default function Math() {
         setExplanation(data.explanation);
         setAudioBase64(data.audioBase64);
         setModelUsed(data.modelUsed);
+        if (data.solution) {
+          markAsSolved(`${selectedQuestion.topicId}-math-${selectedQuestion.idx}`);
+        }
       }
     } catch (e: any) {
       console.error(e);
@@ -208,24 +233,28 @@ export default function Math() {
                 </span>
               </div>
 
-              <div className="grid gap-3">
-                {topic.questions.map((q, idx) => (
+              <div className="grid gap-[10px]" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+                {topic.questions.map((q, idx) => {
+                  const questionId = `${topic.id}-math-${idx}`;
+                  const isSolved = solvedQuestions.has(questionId);
+                  return (
                   <div 
                     key={idx}
                     onClick={() => {
                       setSelectedQuestion({ q, topicId: topic.id, idx });
                       setSolution(null);
                     }}
-                    className="group flex items-start gap-4 p-4 rounded-xl border border-transparent hover:border-[var(--border-primary)] hover:bg-[var(--bg-secondary)] cursor-pointer transition-all duration-200"
+                    className={`p-[12px] rounded-[8px] border cursor-pointer transition-all duration-150 ease-in-out h-[60px] flex items-center ${
+                      isSolved 
+                        ? 'text-[#22c55e] border-[#22c55e] bg-[rgba(34,197,94,0.08)] hover:bg-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.5)] active:border-[rgba(255,255,255,0.5)]' 
+                        : 'text-white border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.5)] active:border-[rgba(255,255,255,0.5)]'
+                    }`}
                   >
-                    <div className="w-8 h-8 rounded-full border border-[var(--border-primary)] flex items-center justify-center text-xs font-serif text-[var(--text-tertiary)] group-hover:bg-[var(--bg-primary)] group-hover:text-emerald-500 group-hover:border-emerald-200 transition-colors shrink-0 mt-0.5">
-                      {q.n}
-                    </div>
-                    <p className="text-[15px] text-[var(--text-secondary)] leading-relaxed group-hover:text-[var(--text-primary)] font-serif">
+                    <p className="text-[0.8rem] whitespace-nowrap overflow-hidden text-ellipsis w-full m-0">
                       {q.t}
                     </p>
                   </div>
-                ))}
+                )})}
               </div>
             </motion.div>
           ))}

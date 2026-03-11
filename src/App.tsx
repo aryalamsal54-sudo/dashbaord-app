@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
-import CustomCursor from './components/CustomCursor';
 import Dashboard from './pages/Dashboard';
 import PhysicsDerivations from './pages/PhysicsDerivations';
 import PhysicsNumericals from './pages/PhysicsNumericals';
@@ -11,7 +10,6 @@ import Electrical from './pages/Electrical';
 export default function App() {
   return (
     <ThemeProvider>
-      <CustomCursor />
       <Router>
         <Routes>
           <Route path="/" element={<Dashboard />} />

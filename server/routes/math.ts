@@ -44,7 +44,7 @@ introduction, no conclusion. Just the complete mathematical working.
 
 Problem: ${question}`;
 
-    const rawSolution = await generateWithProvider('Groq', 'deepseek-r1-distill-llama-70b', solverPrompt, apiKeys);
+    const rawSolution = await generateWithProvider('Groq', 'qwen-qwq-32b', solverPrompt, apiKeys);
 
     // Step 2: Formatter
     const formatterPrompt = `You are a LaTeX math formatter. You receive a solved math solution and 
@@ -118,7 +118,7 @@ ${formattedSolution}`;
       console.error("TTS Generation Error:", ttsError);
     }
 
-    const modelUsed = `DeepSeek R1 (Solver) + Llama 3.3 (Formatter) + Llama 3.3 & Gemini TTS (Voice)`;
+    const modelUsed = `Qwen QwQ 32B (Solver) + Llama 3.3 (Formatter) + Llama 3.3 & Gemini TTS (Voice)`;
 
     await db.query(`
       INSERT INTO math_solutions (question_id, question, solution, model_used, solved, topic)
