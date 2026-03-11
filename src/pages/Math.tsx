@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, Menu, X, Sparkles, AlertTriangle } from 'lucide-react';
@@ -21,17 +21,29 @@ export default function Math() {
   // Modal State
   const [selectedQuestion, setSelectedQuestion] = useState<{q: Question, topicId: string, idx: number} | null>(null);
   const [solution, setSolution] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [showSelectionAnim, setShowSelectionAnim] = useState(false);
   const [animModelId, setAnimModelId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   useEffect(() => {
     fetch('/api/math/topics')
       .then(res => res.json())
       .then(data => setTopics(data));
   }, []);
+
+  useEffect(() => {
+    if (audioBase64) {
+      if (audioRef.current) {
+        audioRef.current.src = `data:audio/mp3;base64,${audioBase64}`;
+      }
+    }
+  }, [audioBase64]);
 
   const filteredTopics = topics.map(topic => ({
     ...topic,
@@ -49,6 +61,8 @@ export default function Math() {
     setShowSelectionAnim(true);
     setLoading(true);
     setSolution(null);
+    setExplanation(null);
+    setAudioBase64(null);
     setError(null);
 
     try {
@@ -80,11 +94,15 @@ export default function Math() {
         setTimeout(() => {
           setShowSelectionAnim(false);
           setSolution(data.solution);
+          setExplanation(data.explanation);
+          setAudioBase64(data.audioBase64);
           setModelUsed(data.modelUsed);
         }, 2000);
       } else {
         setShowSelectionAnim(false);
         setSolution(data.solution);
+        setExplanation(data.explanation);
+        setAudioBase64(data.audioBase64);
         setModelUsed(data.modelUsed);
       }
     } catch (e: any) {
@@ -264,7 +282,36 @@ export default function Math() {
                         {modelUsed || 'AI Generated'}
                       </span>
                     </div>
-                    <MarkdownRenderer content={solution} />
+                    
+                    {audioBase64 && (
+                      <div className="mb-6 p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--border-primary)] shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Voice Explanation
+                          </h4>
+                        </div>
+                        <audio controls className="w-full h-10" ref={audioRef}>
+                          Your browser does not support the audio element.
+                        </audio>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-tertiary)] mb-4 pb-2 border-b border-[var(--border-primary)]">Step-by-Step Solution</h4>
+                        <MarkdownRenderer content={solution} />
+                      </div>
+                      
+                      {explanation && (
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-tertiary)] mb-4 pb-2 border-b border-[var(--border-primary)]">Explanation Transcript</h4>
+                          <div className="text-[13px] leading-relaxed text-[var(--text-secondary)] bg-[var(--card-bg)] p-5 rounded-xl border border-[var(--border-primary)] shadow-sm whitespace-pre-wrap">
+                            {explanation}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="h-64 flex flex-col items-center justify-center text-center border-2 border-dashed border-[var(--border-primary)] rounded-xl bg-[var(--card-bg)]">
