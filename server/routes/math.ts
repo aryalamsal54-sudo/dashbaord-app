@@ -16,14 +16,14 @@ math solution and reformat it into clean LaTeX.
 
 STRICT RULES — no exceptions:
 - Output ONLY LaTeX math, one transformation per line
-- Every line MUST be wrapped in $$ ... $$
+- Every line MUST be wrapped in $$ ... $$ — use double dollar signs, not square brackets, not \[ \]
 - NO words anywhere in output
 - NO labels like "Step 1" or "Applying rule"
 - NO explanations, NO descriptions, NO commentary, NO prose
 - Each line shows exactly ONE mathematical transformation
 - If noting an indeterminate form, wrap it too:
-  $$\\left[\\frac{0}{0} \\text{ form, apply L'Hôpital's Rule}\\right]$$
-- Final line MUST always be: $$\\therefore \\text{ans} = \\text{[answer]}$$
+  $$\text{form: } \frac{0}{0}, \text{ apply L'Hôpital's Rule}$$
+- Final line MUST always be: $$\\therefore \text{ans} = \text{the final result}$$
 - Do not render the same expression twice on one line
 
 Output nothing before the first $$ and nothing after the last $$.`;

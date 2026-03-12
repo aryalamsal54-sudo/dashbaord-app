@@ -16,7 +16,7 @@ programming solution and reformat it into clean Markdown.
 STRICT RULES — no exceptions:
 - Use clear headings (## Logic, ## Code, ## Output)
 - Use code blocks with appropriate language tags (e.g., \`\`\`c)
-- If there is math, use LaTeX ($ for inline, $$ for block)
+- If there is math, use LaTeX ($ for inline, $$ for block) — use dollar signs, not square brackets, not \[ \]
 - NO conversational filler. NO "Here is the solution".
 - Output only the formatted content.`;
 
