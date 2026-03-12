@@ -35,16 +35,13 @@ export default function PhysicsNumericals() {
     if (!explanation) return;
     setVoiceLoading(true);
     try {
-      const res = await fetch('https://api.groq.com/openai/v1/audio/speech', {
+      const res = await fetch('/api/math/tts', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: "canopylabs/orpheus-v1-english",
-          voice: "troy",
-          input: explanation
+          explanation
         })
       });
 

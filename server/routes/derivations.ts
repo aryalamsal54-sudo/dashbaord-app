@@ -1,12 +1,8 @@
 import express from 'express';
-import { GoogleGenAI } from "@google/genai";
 import db from '../db';
 import { smartRouteQuestion, generateWithProvider } from '../utils/aiRouter';
 
 const router = express.Router();
-
-const geminiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-const ai = new GoogleGenAI({ apiKey: geminiKey! });
 
 router.post('/solve', async (req, res) => {
   const { questionId, question, topic, tab, forceRefresh, apiKeys = {}, provider, model } = req.body;

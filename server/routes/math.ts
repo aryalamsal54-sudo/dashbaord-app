@@ -129,4 +129,46 @@ router.post('/solve', async (req, res) => {
   }
 });
 
+async function generateVoice(text: string): Promise<Buffer> {
+  const response = await fetch(
+    'https://api.groq.com/openai/v1/audio/speech',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'canopylabs/orpheus-v1-english',
+        voice: 'troy',
+        input: text,
+        response_format: 'wav'
+      })
+    }
+  );
+  
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Groq TTS error: ${err}`);
+  }
+  
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+router.post('/tts', async (req, res) => {
+  try {
+    const { explanation } = req.body;
+    if (!explanation) {
+      return res.status(400).json({ error: 'Explanation is required' });
+    }
+    const audioBuffer = await generateVoice(explanation);
+    res.set('Content-Type', 'audio/wav');
+    res.send(audioBuffer);
+  } catch (error: any) {
+    console.error("TTS Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
