@@ -14,6 +14,9 @@ export interface Topic {
 
 export interface Solution {
   solution: string | null;
+  explanation?: string | null;
+  voiceExplanation?: string | null;
   modelUsed?: string;
   cached?: boolean;
+  source?: string;
 }

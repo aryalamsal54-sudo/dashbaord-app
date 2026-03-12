@@ -1,7 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
-
 // Types
-export type AIProvider = 'Groq' | 'Puter';
+export type AIProvider = 'Groq';
 export type ImageModel = 'Imagen 3' | 'DALL-E 3' | 'Stable Diffusion XL';
 
 export interface AIModelConfig {
@@ -13,14 +11,9 @@ export interface AIModelConfig {
 }
 
 export const AI_MODELS: AIModelConfig[] = [
-  // Groq
-  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', icon: 'Zap', color: 'text-orange-500' },
-  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', provider: 'Groq', icon: 'Zap', color: 'text-orange-500' },
-  { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', provider: 'Groq', icon: 'Zap', color: 'text-orange-500' },
-  { id: 'gemma2-9b-it', name: 'Gemma 2 9B', provider: 'Groq', icon: 'Zap', color: 'text-orange-500' },
-  
-  // Puter
-  { id: 'puter-model', name: 'Puter General', provider: 'Puter', icon: 'Cloud', color: 'text-blue-500' },
+  { id: 'qwen/qwen3-32b',          name: 'Qwen3 32B',         provider: 'Groq', icon: 'Brain', color: 'text-purple-500' },
+  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B',     provider: 'Groq', icon: 'Zap',   color: 'text-orange-500' },
+  { id: 'llama-3.1-8b-instant',    name: 'Llama 3.1 8B',      provider: 'Groq', icon: 'Zap',   color: 'text-yellow-500' },
 ];
 
 export const IMAGE_MODELS: ImageModel[] = ['Imagen 3', 'DALL-E 3', 'Stable Diffusion XL'];
@@ -28,7 +21,7 @@ export const IMAGE_MODELS: ImageModel[] = ['Imagen 3', 'DALL-E 3', 'Stable Diffu
 // Service Class
 class AIService {
   private getStoredModel(): string {
-    return localStorage.getItem('selectedAIModel') || 'gemini-2.0-flash';
+    return localStorage.getItem('selectedAIModel') || 'llama-3.3-70b-versatile';
   }
 
   private getStoredImageModel(): string {

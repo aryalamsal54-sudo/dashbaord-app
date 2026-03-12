@@ -61,6 +61,17 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
+  cursor: none;
+}
+
+.custom-cursor {
+  transition: none !important;
+  will-change: transform;
+}
+
+/* Ensure interactive elements still show pointer if needed, or keep hidden for full custom feel */
+a, button, [role="button"] {
+  cursor: none;
 }
 
 @layer utilities {

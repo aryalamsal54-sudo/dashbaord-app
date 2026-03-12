@@ -42,16 +42,7 @@ async function startServer() {
 
   app.get("/api/ai/status", (req, res) => {
     res.json({
-      gemini: !!(process.env.GEMINI_API_KEY || process.env.API_KEY),
-      groq: !!process.env.GROQ_API_KEY,
-      openai: !!process.env.OPENAI_API_KEY,
-      anthropic: !!process.env.ANTHROPIC_API_KEY,
-      openrouter: !!process.env.OPENROUTER_API_KEY,
-      github: !!process.env.GITHUB_MODELS_API_KEY,
-      aimlapi: !!process.env.AIMLAPI_API_KEY,
-      sambanova: !!process.env.SAMBANOVA_API_KEY,
-      puter: true,
-      pollinations: true
+      groq: !!process.env.GROQ_API_KEY
     });
   });
 

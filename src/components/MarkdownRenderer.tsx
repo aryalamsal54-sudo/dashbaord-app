@@ -1,5 +1,5 @@
 import React from 'react';
-import Markdown from 'react-markdown';
+import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -13,8 +13,26 @@ interface MarkdownRendererProps {
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className = '' }) => {
   return (
-    <div className={`markdown-body ${className}`}>
-      <Markdown
+    <div className={`markdown-body solution-output ${className}`}>
+      <style>{`
+        .solution-output {
+          font-family: 'Inter', sans-serif;
+          line-height: 1.8;
+          color: #e2e8f0;
+        }
+        .solution-output .katex-display {
+          margin: 1.5em 0;
+          padding: 1rem;
+          background: rgba(255,255,255,0.03);
+          border-radius: 8px;
+          overflow-x: auto;
+          overflow-y: hidden;
+        }
+        .solution-output .katex {
+          font-size: 1.1em;
+        }
+      `}</style>
+      <ReactMarkdown
         remarkPlugins={[remarkMath]}
         rehypePlugins={[rehypeKatex]}
         components={{
@@ -69,7 +87,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
         }}
       >
         {content}
-      </Markdown>
+      </ReactMarkdown>
     </div>
   );
 };

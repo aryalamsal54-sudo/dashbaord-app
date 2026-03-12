@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Menu, X, Sparkles, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Menu, X, Sparkles, AlertTriangle, Volume2 } from 'lucide-react';
 import { Question } from '../types';
 import AISelectionAnimation from '../components/ai/AISelectionAnimation';
 import MarkdownRenderer from '../components/MarkdownRenderer';
@@ -29,8 +29,40 @@ export default function Math() {
   const [animModelId, setAnimModelId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [solvedQuestions, setSolvedQuestions] = useState<Set<string>>(new Set());
+  const [voiceLoading, setVoiceLoading] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleVoiceExplain = async () => {
+    if (!explanation) return;
+    setVoiceLoading(true);
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: "canopylabs/orpheus-v1-english",
+          voice: "troy",
+          input: explanation
+        })
+      });
+
+      if (!res.ok) throw new Error('TTS failed');
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.play();
+    } catch (err) {
+      console.error("Voice Error:", err);
+      alert("Failed to generate voice explanation.");
+    } finally {
+      setVoiceLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetch('/api/math/topics')
@@ -306,25 +338,24 @@ export default function Math() {
               <div className="flex-1 overflow-y-auto p-8 bg-[var(--bg-secondary)]/50">
                 {solution ? (
                   <div className="prose prose-slate dark:prose-invert max-w-none">
-                    <div className="flex items-center gap-2 mb-6">
-                      <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wide border border-emerald-200">
-                        {modelUsed || 'AI Generated'}
-                      </span>
-                    </div>
-                    
-                    {audioBase64 && (
-                      <div className="mb-6 p-4 bg-[var(--card-bg)] rounded-xl border border-[var(--border-primary)] shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Voice Explanation
-                          </h4>
-                        </div>
-                        <audio controls className="w-full h-10" ref={audioRef}>
-                          Your browser does not support the audio element.
-                        </audio>
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wide border border-emerald-200">
+                          {modelUsed || 'Groq (3-Phase Pipeline)'}
+                        </span>
                       </div>
-                    )}
+                      
+                      {explanation && (
+                        <button
+                          onClick={handleVoiceExplain}
+                          disabled={voiceLoading}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all disabled:opacity-50 text-xs font-medium"
+                        >
+                          <Volume2 size={14} className={voiceLoading ? 'animate-pulse' : ''} />
+                          {voiceLoading ? 'Generating Voice...' : 'Explain with Voice'}
+                        </button>
+                      )}
+                    </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       <div>

@@ -1,25 +1,95 @@
 import express from 'express';
-import { GoogleGenAI } from "@google/genai";
 import db from '../db';
 import { MATH_TOPICS } from '../data/mathTopics';
-import { smartRouteQuestion, generateWithProvider } from '../utils/aiRouter';
 
 const router = express.Router();
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
-const MODELS = {
-  solver:    "qwen/qwen3-32b",           // Qwen 3 32B
-  formatter: "llama-3.3-70b-versatile", // Llama 3.3 70B
-  explainer: "llama-3.3-70b-versatile", // Llama 3.3 70B
-  tts:       "canopylabs/orpheus-v1-english" // Orpheus English
-};
+const SOLVER_PROMPT = `You are an expert mathematician. Solve the given problem 
+with full working, showing every single intermediate step. Do not skip any step 
+no matter how trivial. Show all substitutions, simplifications, integrations, 
+differentiations, and transformations clearly. If an indeterminate form exists 
+(0/0, inf/inf, 0*inf etc), identify it explicitly. Output only the complete 
+mathematical working — no commentary, no introduction, no conclusion.`;
+
+const FORMATTER_PROMPT = `You are a LaTeX math formatter. You receive a solved 
+math solution and reformat it into clean LaTeX.
+
+STRICT RULES — no exceptions:
+- Output ONLY LaTeX math, one transformation per line
+- Every line MUST be wrapped in $$ ... $$
+- NO words anywhere in output
+- NO labels like "Step 1" or "Applying rule"
+- NO explanations, NO descriptions, NO commentary, NO prose
+- Each line shows exactly ONE mathematical transformation
+- If noting an indeterminate form, wrap it too:
+  $$\\left[\\frac{0}{0} \\text{ form, apply L'Hôpital's Rule}\\right]$$
+- Final line MUST always be: $$\\therefore \\text{ans} = \\text{[answer]}$$
+- Do not render the same expression twice on one line
+
+Output nothing before the first $$ and nothing after the last $$.`;
+
+const EXPLAINER_PROMPT = `You are a friendly math tutor explaining a solution 
+out loud to a confused student. You are given a LaTeX math solution.
+
+STRICT RULES:
+- Convert every step into natural spoken English
+- NEVER use LaTeX or symbols — this will be read aloud by TTS
+- Say "y squared" not "y^2"
+- Say "dy by dx" not "dy/dx"
+- Say "the natural log of x" not "ln x"  
+- Say "plus" "minus" "divided by" "multiplied by" — spell everything out
+- Keep each step to maximum 2 simple sentences
+- Speak like a calm, clear tutor — not a textbook
+- End with: "And that is our final answer."
+- No bullet points, no numbering, just flowing spoken sentences.`;
+
+async function solveWithGroq(question: string): Promise<{ formatted: string, explanation: string }> {
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set');
+
+  const groqFetch = async (model: string, systemPrompt: string, userContent: string) => {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        temperature: model === 'qwen/qwen3-32b' ? 0.6 : 0.3,
+        top_p: 0.95,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: userContent }
+        ]
+      })
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Groq API error: ${err}`);
+    }
+    const data = await res.json();
+    return data.choices[0].message.content as string;
+  };
+
+  // Phase 1 — Solve
+  const rawSolution = await groqFetch('qwen/qwen3-32b', SOLVER_PROMPT, question);
+
+  // Phase 2 — Format into LaTeX
+  const formatted = await groqFetch('llama-3.3-70b-versatile', FORMATTER_PROMPT, rawSolution);
+
+  // Phase 3 — Explain in spoken English (for voice button)
+  const explanation = await groqFetch('llama-3.3-70b-versatile', EXPLAINER_PROMPT, formatted);
+
+  return { formatted, explanation };
+}
 
 router.get('/topics', (req, res) => {
   res.json(MATH_TOPICS);
 });
 
 router.post('/solve', async (req, res) => {
-  const { questionId, question, topic, forceRefresh, apiKeys = {} } = req.body;
+  const { questionId, question, topic, forceRefresh } = req.body;
   
   if (!forceRefresh) {
     const { rows } = await db.query('SELECT * FROM math_solutions WHERE question_id = $1', [questionId]);
@@ -28,104 +98,19 @@ router.post('/solve', async (req, res) => {
       try {
         const parsed = JSON.parse(cached.solution);
         return res.json({ 
-          solution: parsed.formattedSolution, 
+          solution: parsed.formattedSolution || cached.solution, 
           explanation: parsed.voiceExplanation, 
-          audioBase64: parsed.audioBase64,
-          modelUsed: cached.model_used, 
+          source: 'groq',
           cached: true 
         });
       } catch (e) {
-        // Fallback for old cached solutions
-        return res.json({ solution: cached.solution, modelUsed: cached.model_used, cached: true });
+        return res.json({ solution: cached.solution, source: 'groq', cached: true });
       }
     }
   }
 
   try {
-    // Step 1: Solver
-    const solverPrompt = `You are an expert mathematician. Solve the given problem with full working, 
-showing every single intermediate step. Do not skip any step no matter how 
-trivial. Show all substitutions, simplifications, integrations, and 
-transformations clearly. Output only the solution — no commentary, no 
-introduction, no conclusion. Just the complete mathematical working.
-
-Problem: ${question}`;
-
-    const rawSolution = await generateWithProvider('Groq', MODELS.solver, solverPrompt, apiKeys);
-
-    // Step 2: Formatter
-    const formatterPrompt = `You are a LaTeX math formatter. You receive a solved math solution and 
-reformat it into clean LaTeX.
-
-STRICT RULES — no exceptions:
-- Output ONLY LaTeX math, one transformation per line
-- Every line must be wrapped in \\[ ... \\]
-- NO words. NO labels. NO "Step 1". NO "Therefore". NO "Simplifying". 
-  NO "We get". NO "Substituting". NOTHING like that.
-- NO explanations. NO descriptions. NO text of any kind.
-- Each line shows exactly one mathematical transformation from the previous
-- Final line must always be: \\[\\therefore \\text{ans} = ...\\]
-- Do not render the same expression twice on one line
-
-Example output:
-\\[\\frac{dy}{dx} + \\frac{y}{x} = y^2\\]
-\\[w = y^{-1},\\quad y = \\frac{1}{w}\\]
-\\[\\frac{dw}{dx} - \\frac{w}{x} = -1\\]
-\\[\\mu = \\frac{1}{x}\\]
-\\[\\frac{d}{dx}\\left(\\frac{w}{x}\\right) = -\\frac{1}{x}\\]
-\\[\\frac{w}{x} = -\\ln x + C\\]
-\\[y = \\frac{1}{x(C - \\ln x)}\\]
-\\[\\therefore y = \\frac{1}{x(C - \\ln x)}\\]
-
-That is the entire output. Nothing before it. Nothing after it.
-
-Solution to format:
-${rawSolution}`;
-
-    const formattedSolution = await generateWithProvider('Groq', MODELS.formatter, formatterPrompt, apiKeys);
-
-    // Step 3: Voice Explainer
-    const explainerPrompt = `You are a friendly math tutor explaining a solution out loud to a student 
-who is confused. You are given a LaTeX math solution.
-
-STRICT RULES:
-- Convert every step into natural spoken English
-- NEVER use LaTeX or symbols in your output — it will be read aloud by TTS
-- Say "y squared" not "y^2"
-- Say "dy by dx" not "dy/dx" or "\\frac{dy}{dx}"
-- Say "plus" "minus" "divided by" "multiplied by" — spell it all out
-- Say "the natural log of x" not "ln x"
-- Keep each step to maximum 2 simple sentences
-- Speak like a calm, clear tutor — not a textbook
-- End with: "And that is our final answer."
-- No bullet points. No numbering. Just flowing spoken sentences.
-
-LaTeX Solution:
-${formattedSolution}`;
-
-    const voiceExplanation = await generateWithProvider('Groq', MODELS.explainer, explainerPrompt, apiKeys);
-
-    // Generate Audio using Gemini TTS
-    let audioBase64 = null;
-    try {
-      const ttsResponse = await ai.models.generateContent({
-        model: MODELS.tts,
-        contents: [{ parts: [{ text: voiceExplanation }] }],
-        config: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
-            },
-          },
-        },
-      });
-      audioBase64 = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    } catch (ttsError) {
-      console.error("TTS Generation Error:", ttsError);
-    }
-
-    const modelUsed = `${MODELS.solver} (Solver) + ${MODELS.formatter} (Formatter) + ${MODELS.explainer} & ${MODELS.tts} (Voice)`;
+    const { formatted, explanation } = await solveWithGroq(question);
 
     await db.query(`
       INSERT INTO math_solutions (question_id, question, solution, model_used, solved, topic)
@@ -135,9 +120,9 @@ ${formattedSolution}`;
         model_used = EXCLUDED.model_used,
         solved = 1,
         updated_at = CURRENT_TIMESTAMP
-    `, [questionId, question, JSON.stringify({ formattedSolution, voiceExplanation, audioBase64 }), modelUsed, topic || 'unknown']);
+    `, [questionId, question, JSON.stringify({ formattedSolution: formatted, voiceExplanation: explanation }), 'Groq (3-Phase Pipeline)', topic || 'unknown']);
 
-    res.json({ solution: formattedSolution, explanation: voiceExplanation, audioBase64, modelUsed, cached: false, complexity: 10 });
+    res.json({ solution: formatted, explanation, source: 'groq', cached: false });
   } catch (error: any) {
     console.error("AI Error:", error);
     res.status(500).json({ error: error.message });

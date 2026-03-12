@@ -6,10 +6,12 @@ import PhysicsNumericals from './pages/PhysicsNumericals';
 import Math from './pages/Math';
 import Programming from './pages/Programming';
 import Electrical from './pages/Electrical';
+import CustomCursor from './components/CustomCursor';
 
 export default function App() {
   return (
     <ThemeProvider>
+      <CustomCursor />
       <Router>
         <Routes>
           <Route path="/" element={<Dashboard />} />
