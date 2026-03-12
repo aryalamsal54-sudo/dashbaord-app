@@ -21,7 +21,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
           color: #e2e8f0;
         }
         .solution-output .katex-display {
-          margin: 1.5em 0;
+          display: block;
+          margin: 0.5em 0;
+          text-align: left;
           padding: 1rem;
           background: rgba(255,255,255,0.03);
           border-radius: 8px;

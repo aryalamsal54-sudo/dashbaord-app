@@ -1,17 +1,30 @@
 import express from 'express';
 import db from '../db';
-import { smartRouteQuestion, generateWithProvider } from '../utils/aiRouter';
 
 const router = express.Router();
 
+async function callGroq(systemPrompt: string, userContent: string, model = 'llama-3.3-70b-versatile'): Promise<string> {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent }
+      ]
+    })
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
 router.post('/solve', async (req, res) => {
-  const { questionId, question, topic, tab, forceRefresh, apiKeys = {}, provider, model } = req.body;
-  
-  // If a specific key is provided in headers (e.g. from aiService), add it to apiKeys
-  const customKey = req.headers['x-ai-api-key'] as string;
-  if (customKey && provider) {
-    apiKeys[provider] = customKey;
-  }
+  const { questionId, question, topic, tab, forceRefresh } = req.body;
   
   if (!forceRefresh) {
     const cached = db.prepare('SELECT * FROM physics_solutions WHERE question_id = ?').get(questionId) as any;
@@ -20,32 +33,13 @@ router.post('/solve', async (req, res) => {
     }
   }
 
-  let prompt = `You are a physics expert. Derive the following: ${question}
-        
-        Format the output using Markdown. 
-        Use LaTeX for all mathematical equations and symbols.
-        - Use $$ ... $$ for block equations.
-        - Use $ ... $ for inline equations.
-        
-        Structure your response with clear headings (e.g., ## Step 1: ...), bullet points for explanations, and a bold "Final Result" section at the end.`;
-
-  if (topic === 'General Chat') {
-    prompt = `You are a helpful AI assistant. Answer the following question: ${question}
-    
-    Format your response using Markdown. Use headings, bullet points, and bold text for clarity. If you include any math, use LaTeX ($ for inline, $$ for block).`;
-  }
+  const systemPrompt = topic === 'General Chat' 
+    ? "You are a helpful AI assistant. Answer the following question. Format your response using Markdown. Use headings, bullet points, and bold text for clarity. If you include any math, use LaTeX ($ for inline, $$ for block)."
+    : "You are a physics expert. Derive the following. Format the output using Markdown. Use LaTeX for all mathematical equations and symbols. Use $$ ... $$ for block equations. Use $ ... $ for inline equations. Structure your response with clear headings (e.g., ## Step 1: ...), bullet points for explanations, and a bold \"Final Result\" section at the end.";
 
   try {
-    let routing = { selectedProvider: provider || 'Gemini', selectedModel: model || 'gemini-2.5-flash', complexity: 5 };
-    
-    // Only use smart routing if provider/model are not explicitly requested (e.g. from derivations page)
-    if (!provider && !model) {
-      routing = await smartRouteQuestion(question, apiKeys);
-      console.log(`[Smart Route Derivations] Complexity: ${routing.complexity}/10 | Selected: ${routing.selectedProvider} (${routing.selectedModel})`);
-    }
-    
-    const solution = await generateWithProvider(routing.selectedProvider, routing.selectedModel, prompt, apiKeys);
-    const modelUsed = `${routing.selectedProvider} (${routing.selectedModel}) [Complexity: ${routing.complexity}/10]`;
+    const solution = await callGroq(systemPrompt, question);
+    const modelUsed = 'Groq (llama-3.3-70b-versatile)';
 
     if (topic !== 'General Chat') {
       db.prepare(`
@@ -59,7 +53,7 @@ router.post('/solve', async (req, res) => {
       `).run(questionId, question, solution, modelUsed, topic || 'unknown', tab || 'unknown', 'Physics', '0');
     }
 
-    res.json({ solution, modelUsed, cached: false, complexity: routing.complexity });
+    res.json({ solution, modelUsed, cached: false });
   } catch (error: any) {
     console.error("AI Error:", error);
     res.status(500).json({ error: error.message });

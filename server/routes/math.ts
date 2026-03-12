@@ -11,22 +11,38 @@ differentiations, and transformations clearly. If an indeterminate form exists
 (0/0, inf/inf, 0*inf etc), identify it explicitly. Output only the complete 
 mathematical working — no commentary, no introduction, no conclusion.`;
 
-const FORMATTER_PROMPT = `You are a LaTeX math formatter. You receive a solved 
-math solution and reformat it into clean LaTeX.
+const FORMATTER_PROMPT = `You are a LaTeX math formatter.
 
-STRICT RULES — no exceptions:
-- Output ONLY LaTeX math, one transformation per line
-- Every line MUST be wrapped in $$ ... $$ — use double dollar signs, not square brackets, not \[ \]
-- NO words anywhere in output
-- NO labels like "Step 1" or "Applying rule"
-- NO explanations, NO descriptions, NO commentary, NO prose
-- Each line shows exactly ONE mathematical transformation
-- If noting an indeterminate form, wrap it too:
-  $$\text{form: } \frac{0}{0}, \text{ apply L'Hôpital's Rule}$$
-- Final line MUST always be: $$\\therefore \text{ans} = \text{the final result}$$
-- Do not render the same expression twice on one line
+YOUR ONLY JOB: Take a math solution and reformat it.
 
-Output nothing before the first $$ and nothing after the last $$.`;
+OUTPUT RULES — ZERO EXCEPTIONS:
+- Every single step on its OWN line
+- Every line MUST start with $$ and end with $$
+- Put a real newline character \\n between every line
+- ONE mathematical transformation per line — never combine two steps
+- NO words, NO labels, NO "Step 1", NO "Therefore", NO English text
+- NO explanations anywhere
+- If indeterminate form, write it as its own line:
+  $$\\left[\\frac{\\infty}{\\infty}\\text{ — apply L'Hôpital}\\right]$$
+- Last line is ALWAYS: $$\\therefore \\text{ans} = [answer]$$
+- Do NOT put multiple = signs chained on one line
+  WRONG:  $$a = b = c = d$$
+  RIGHT:  $$a = b$$
+          $$= c$$
+          $$= d$$
+
+EXAMPLE OF PERFECT OUTPUT (copy this exact style):
+$$\\lim_{x \\to \\infty} \\frac{\\ln x}{\\sqrt{x}}$$
+$$\\left[\\frac{\\infty}{\\infty}\\text{ — apply L'Hôpital's Rule}\\right]$$
+$$= \\lim_{x \\to \\infty} \\frac{\\frac{d}{dx}(\\ln x)}{\\frac{d}{dx}(\\sqrt{x})}$$
+$$= \\lim_{x \\to \\infty} \\frac{\\frac{1}{x}}{\\frac{1}{2\\sqrt{x}}}$$
+$$= \\lim_{x \\to \\infty} \\frac{2\\sqrt{x}}{x}$$
+$$= \\lim_{x \\to \\infty} \\frac{2}{\\sqrt{x}}$$
+$$= \\frac{2}{\\infty}$$
+$$\\therefore \\text{ans} = 0$$
+
+Each $$ block is on its own line. That is the entire output.
+Nothing before the first $$. Nothing after the last $$.`;
 
 const EXPLAINER_PROMPT = `You are a friendly math tutor explaining a solution 
 out loud to a confused student. You are given a LaTeX math solution.
