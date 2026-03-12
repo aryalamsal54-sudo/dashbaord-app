@@ -7,6 +7,13 @@ import { smartRouteQuestion, generateWithProvider } from '../utils/aiRouter';
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
+const MODELS = {
+  solver:    "qwen-qwq-32b",           // Qwen 3 32B
+  formatter: "llama-3.3-70b-versatile", // Llama 3.3 70B
+  explainer: "llama-3.3-70b-versatile", // Llama 3.3 70B
+  tts:       "canopylabs/orpheus-v1-english" // Orpheus English
+};
+
 router.get('/topics', (req, res) => {
   res.json(MATH_TOPICS);
 });
@@ -44,7 +51,7 @@ introduction, no conclusion. Just the complete mathematical working.
 
 Problem: ${question}`;
 
-    const rawSolution = await generateWithProvider('Groq', 'qwen-qwq-32b', solverPrompt, apiKeys);
+    const rawSolution = await generateWithProvider('Groq', MODELS.solver, solverPrompt, apiKeys);
 
     // Step 2: Formatter
     const formatterPrompt = `You are a LaTeX math formatter. You receive a solved math solution and 
@@ -75,7 +82,7 @@ That is the entire output. Nothing before it. Nothing after it.
 Solution to format:
 ${rawSolution}`;
 
-    const formattedSolution = await generateWithProvider('Groq', 'llama-3.3-70b-versatile', formatterPrompt, apiKeys);
+    const formattedSolution = await generateWithProvider('Groq', MODELS.formatter, formatterPrompt, apiKeys);
 
     // Step 3: Voice Explainer
     const explainerPrompt = `You are a friendly math tutor explaining a solution out loud to a student 
@@ -96,13 +103,13 @@ STRICT RULES:
 LaTeX Solution:
 ${formattedSolution}`;
 
-    const voiceExplanation = await generateWithProvider('Groq', 'llama-3.3-70b-versatile', explainerPrompt, apiKeys);
+    const voiceExplanation = await generateWithProvider('Groq', MODELS.explainer, explainerPrompt, apiKeys);
 
     // Generate Audio using Gemini TTS
     let audioBase64 = null;
     try {
       const ttsResponse = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
+        model: MODELS.tts,
         contents: [{ parts: [{ text: voiceExplanation }] }],
         config: {
           responseModalities: ["AUDIO"],
@@ -118,7 +125,7 @@ ${formattedSolution}`;
       console.error("TTS Generation Error:", ttsError);
     }
 
-    const modelUsed = `Qwen QwQ 32B (Solver) + Llama 3.3 (Formatter) + Llama 3.3 & Gemini TTS (Voice)`;
+    const modelUsed = `${MODELS.solver} (Solver) + ${MODELS.formatter} (Formatter) + ${MODELS.explainer} & ${MODELS.tts} (Voice)`;
 
     await db.query(`
       INSERT INTO math_solutions (question_id, question, solution, model_used, solved, topic)
