@@ -8,7 +8,7 @@ const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 const MODELS = {
-  solver:    "qwen-qwq-32b",           // Qwen 3 32B
+  solver:    "qwen/qwen3-32b",           // Qwen 3 32B
   formatter: "llama-3.3-70b-versatile", // Llama 3.3 70B
   explainer: "llama-3.3-70b-versatile", // Llama 3.3 70B
   tts:       "canopylabs/orpheus-v1-english" // Orpheus English

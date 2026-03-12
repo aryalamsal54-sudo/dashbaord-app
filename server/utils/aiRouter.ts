@@ -105,16 +105,25 @@ export async function generateWithProvider(provider: string, model: string, prom
     if (provider === 'Groq') {
       const apiKey = keys.Groq || process.env.GROQ_API_KEY;
       if (!apiKey) throw new Error("Groq API key missing");
+      
+      const payload: any = {
+        model: model,
+        messages: [{ role: 'user', content: prompt }]
+      };
+      
+      if (model === 'qwen/qwen3-32b') {
+        payload.reasoning_format = "hidden";
+        payload.temperature = 0.6;
+        payload.top_p = 0.95;
+      }
+
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          model: model,
-          messages: [{ role: 'user', content: prompt }]
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) throw data.error || new Error('Groq API error');
@@ -122,15 +131,23 @@ export async function generateWithProvider(provider: string, model: string, prom
     }
 
     if (provider === 'Puter') {
+      const payload: any = {
+        model: model,
+        messages: [{ role: 'user', content: prompt }]
+      };
+      
+      if (model === 'qwen/qwen3-32b') {
+        payload.reasoning_format = "hidden";
+        payload.temperature = 0.6;
+        payload.top_p = 0.95;
+      }
+
       const res = await fetch('https://api.puter.com/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          model: model,
-          messages: [{ role: 'user', content: prompt }]
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) throw data.error || new Error('Puter API error');
